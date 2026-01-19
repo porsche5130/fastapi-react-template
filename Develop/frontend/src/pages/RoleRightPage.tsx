@@ -42,9 +42,9 @@ const RoleRightPage: React.FC = () => {
   };
 
   // 載入功能清單
-  const loadFunctions = async () => {
+  const loadFunctions = async (roleId?: number) => {
     try {
-      const data = await getFunctionsWithPermissions();
+      const data = await getFunctionsWithPermissions(roleId);
       setFunctions(data);
     } catch (error) {
       console.error('載入功能清單失敗', error);
@@ -57,6 +57,9 @@ const RoleRightPage: React.FC = () => {
     setLoading(true);
 
     try {
+      // 根據選擇的角色重新載入功能清單
+      await loadFunctions(roleId);
+
       const data = await getRoleRights(roleId);
 
       // 將權限資料轉為 Map

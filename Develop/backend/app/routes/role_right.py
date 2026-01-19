@@ -25,6 +25,7 @@ router = APIRouter()
 
 @router.get("/functions", response_model=List[FunctionWithPermissions], summary="取得功能清單與可用權限")
 async def get_functions_with_permissions(
+    role_id: int = None,
     db: Session = Depends(get_db),
     current_user: UserDetail = Depends(get_current_user)
 ):
@@ -34,10 +35,19 @@ async def get_functions_with_permissions(
     - 回傳所有 is_active=true 的功能
     - 依 func_order 排序
     - 包含每個功能的 available_permissions
+    - 若提供 role_id 且該角色為非系統管理角色(is_mana=false),則過濾掉系統管理功能(is_mana=true)
     """
-    functions = db.query(SysFunction).filter(
-        SysFunction.is_active == True
-    ).order_by(SysFunction.func_order).all()
+    # 查詢功能清單
+    query = db.query(SysFunction).filter(SysFunction.is_active == True)
+
+    # 如果提供 role_id,檢查角色是否為系統管理角色
+    if role_id:
+        role = db.query(UserRole).filter(UserRole.id == role_id).first()
+        if role and not role.is_mana:
+            # 非系統管理角色,過濾掉系統管理功能
+            query = query.filter(SysFunction.is_mana == False)
+
+    functions = query.order_by(SysFunction.func_order).all()
 
     result = []
     for func in functions:

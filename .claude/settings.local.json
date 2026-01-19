@@ -51,7 +51,8 @@
       "Bash(git config:*)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: P-PA6.4 Management System\n\n- Backend: FastAPI with PostgreSQL integration\n  - System functions \\(sysfuction\\) CRUD with constraint handling\n  - User management, roles, and organizations\n  - Authentication and authorization with JWT\n  - i18n support for API responses\n\n- Frontend: React TypeScript with i18n\n  - System function settings with CRUD operations\n  - Dynamic field disabling based on function type \\(node/function\\)\n  - Multilingual support \\(zh-TW, en\\)\n  - User/role/organization management pages\n  - Permission configuration with i18n labels\n\n- Database: PostgreSQL schema with constraints\n  - Check constraints for data integrity \\(chk_func_module\\)\n  - JSONB fields for flexible permissions\n  - module_item as string array for permission types\n\n- Configuration: Environment setup, CORS, static files\n- Fixed: Database constraint handling for node vs function types\n- Fixed: Multiple backend process conflicts\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\n功能權限→完成功能列權限設定\n\n實作功能選單動態權限過濾機制：\n- 根據使用者角色權限動態顯示功能選單\n- 必須具備「讀取」權限才顯示功能\n- 多角色採用聯集\\(OR\\)邏輯\n- 自動隱藏沒有子功能的節點\n\n後端修改：\n- 修改 app/routes/system.py get_system_functions\\(\\)\n- 新增權限檢查邏輯，查詢 role_right 表\n- 實作節點過濾，遞迴移除空節點\n\n前端修改：\n- 修改 App.tsx 註冊 RoleRightPage 路由\n- 修正 JSX.Element 類型為 React.ReactElement\n\n文件更新：\n- 角色權限設定作業.md 新增「功能選單顯示規則」章節\n- 詳細說明權限檢查邏輯與節點過濾規則\n\n測試狀態：\n- 11 個 TDD 測試全部通過\n- 功能選單正確根據權限顯示\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

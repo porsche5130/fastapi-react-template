@@ -45,9 +45,11 @@ export interface RoleRightsDetail {
 
 /**
  * 取得功能清單與可用權限
+ * @param roleId 角色ID (可選) - 若提供且角色為非系統管理角色,將過濾掉系統管理功能
  */
-export const getFunctionsWithPermissions = async (): Promise<FunctionWithPermissions[]> => {
-  const response = await axios.get('/api/role_right/functions');
+export const getFunctionsWithPermissions = async (roleId?: number): Promise<FunctionWithPermissions[]> => {
+  const params = roleId ? { role_id: roleId } : {};
+  const response = await axios.get('/api/role_right/functions', { params });
   return response.data;
 };
 
