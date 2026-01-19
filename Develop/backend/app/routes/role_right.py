@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.role_right import RoleRight
 from app.models.user_role import UserRole
-from app.models.sysfuction import SysFunction
+from app.models.sysfunction import SysFunction
 from app.models.user_detail import UserDetail
 from app.schemas.role_right import (
     RoleRightResponse,
@@ -158,17 +158,17 @@ async def save_role_rights(
         for right in data.rights:
             # 驗證功能是否存在
             function = db.query(SysFunction).filter(
-                SysFunction.id == right.sysfuction_id
+                SysFunction.id == right.sysfunction_id
             ).first()
             if not function:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"找不到功能ID: {right.sysfuction_id}"
+                    detail=f"找不到功能ID: {right.sysfunction_id}"
                 )
 
             new_right = RoleRight(
                 user_role_id=role_id,
-                sysfuction_id=right.sysfuction_id,
+                sysfunction_id=right.sysfunction_id,
                 func_code=right.func_code,
                 is_create=right.is_create,
                 is_read=right.is_read,

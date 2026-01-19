@@ -1,6 +1,6 @@
 /**
  * 側邊欄選單元件
- * 顯示系統功能選單（從 sysfuction 資料表）
+ * 顯示系統功能選單（從 sysfunction 資料表）
  */
 
 import React, { useState, useEffect } from 'react';

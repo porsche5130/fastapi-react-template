@@ -13,7 +13,7 @@ from app.core.database import Base
 class SysFunction(Base):
     """系統功能明細檔"""
 
-    __tablename__ = "sysfuction"
+    __tablename__ = "sysfunction"
 
     # 主鍵
     id = Column(Integer, primary_key=True, index=True)
@@ -48,11 +48,11 @@ class SysFunction(Base):
             "(func_type = 1 AND func_module_name IS NULL) OR (func_type = 2 AND func_module_name IS NOT NULL)",
             name="chk_func_module"
         ),
-        Index("idx_sysfuction_code", "func_code"),
-        Index("idx_sysfuction_upper", "upper_func_id"),
-        Index("idx_sysfuction_type", "func_type"),
-        Index("idx_sysfuction_active", "is_active"),
-        Index("idx_sysfuction_order", "func_order"),
+        Index("idx_sysfunction_code", "func_code"),
+        Index("idx_sysfunction_upper", "upper_func_id"),
+        Index("idx_sysfunction_type", "func_type"),
+        Index("idx_sysfunction_active", "is_active"),
+        Index("idx_sysfunction_order", "func_order"),
     )
 
     # 關聯

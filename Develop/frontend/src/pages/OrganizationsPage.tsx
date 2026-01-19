@@ -27,6 +27,7 @@ const OrganizationsPage: React.FC = () => {
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [formData, setFormData] = useState<OrganizationCreate>({
     org_code: '',
     org_name: '',
@@ -79,7 +80,8 @@ const OrganizationsPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const openModal = (org?: Organization) => {
+  const openModal = (org?: Organization, viewMode: boolean = false) => {
+    setIsViewMode(viewMode);
     if (org) {
       setEditingOrg(org);
       setFormData({
@@ -235,17 +237,19 @@ const OrganizationsPage: React.FC = () => {
                     </td>
                     <td className="actions">
                       {canUpdate && (
-                        <button className="btn-edit" onClick={() => openModal(org)}>
+                        <button className="btn-edit" onClick={() => openModal(org, false)}>
                           {t('common.edit')}
+                        </button>
+                      )}
+                      {!canUpdate && hasPermission('organizations', 'read') && (
+                        <button className="btn-secondary" onClick={() => openModal(org, true)}>
+                          {t('common.view')}
                         </button>
                       )}
                       {canDelete && (
                         <button className="btn-delete" onClick={() => handleDelete(org)}>
                           {t('common.delete')}
                         </button>
-                      )}
-                      {!canUpdate && !canDelete && (
-                        <span style={{ color: '#999', fontSize: '14px' }}>-</span>
                       )}
                     </td>
                   </tr>
@@ -344,7 +348,9 @@ const OrganizationsPage: React.FC = () => {
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingOrg ? t('common.edit') : t('common.create')}</h2>
+              <h2>
+                {isViewMode ? t('common.view') : (editingOrg ? t('common.edit') : t('common.create'))}
+              </h2>
               <button className="modal-close" onClick={closeModal}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>
@@ -356,6 +362,7 @@ const OrganizationsPage: React.FC = () => {
                     value={formData.org_code}
                     onChange={(e) => setFormData({ ...formData, org_code: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -365,6 +372,7 @@ const OrganizationsPage: React.FC = () => {
                     value={formData.org_name}
                     onChange={(e) => setFormData({ ...formData, org_name: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -373,6 +381,7 @@ const OrganizationsPage: React.FC = () => {
                     value={formData.org_type}
                     onChange={(e) => setFormData({ ...formData, org_type: parseInt(e.target.value) })}
                     required
+                    disabled={isViewMode}
                   >
                     <option value={1}>{t('organizations.types.government')}</option>
                     <option value={2}>{t('organizations.types.company')}</option>
@@ -386,6 +395,7 @@ const OrganizationsPage: React.FC = () => {
                     value={formData.contact_person}
                     onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -395,6 +405,7 @@ const OrganizationsPage: React.FC = () => {
                     value={formData.contact_email}
                     onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -404,6 +415,7 @@ const OrganizationsPage: React.FC = () => {
                     value={formData.contact_phone}
                     onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -412,6 +424,7 @@ const OrganizationsPage: React.FC = () => {
                     type="text"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -420,6 +433,7 @@ const OrganizationsPage: React.FC = () => {
                     type="text"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group full-width">
@@ -428,6 +442,7 @@ const OrganizationsPage: React.FC = () => {
                     value={formData.memo}
                     onChange={(e) => setFormData({ ...formData, memo: e.target.value })}
                     rows={3}
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -436,6 +451,7 @@ const OrganizationsPage: React.FC = () => {
                       type="checkbox"
                       checked={formData.is_active}
                       onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      disabled={isViewMode}
                     />
                     {t('common.active')}
                   </label>
@@ -443,11 +459,13 @@ const OrganizationsPage: React.FC = () => {
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={closeModal}>
-                  {t('common.cancel')}
+                  {isViewMode ? t('common.close') : t('common.cancel')}
                 </button>
-                <button type="submit" className="btn-primary">
-                  {t('common.save')}
-                </button>
+                {!isViewMode && (
+                  <button type="submit" className="btn-primary">
+                    {t('common.save')}
+                  </button>
+                )}
               </div>
             </form>
           </div>

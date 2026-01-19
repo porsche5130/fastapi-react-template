@@ -8,7 +8,7 @@ import axios from '../api/axios';
 // 類型定義
 export interface RoleRight {
   id?: number;
-  sysfuction_id: number;
+  sysfunction_id: number;
   func_code: string;
   is_create: boolean;
   is_read: boolean;

@@ -65,14 +65,14 @@ const RoleRightPage: React.FC = () => {
       // 將權限資料轉為 Map
       const rightsMap = new Map<number, RoleRight>();
       data.rights.forEach(right => {
-        rightsMap.set(right.sysfuction_id, right);
+        rightsMap.set(right.sysfunction_id, right);
       });
 
       // 初始化所有功能的權限 (未設定的功能預設全為 false)
       functions.forEach(func => {
         if (!rightsMap.has(func.id)) {
           rightsMap.set(func.id, {
-            sysfuction_id: func.id,
+            sysfunction_id: func.id,
             func_code: func.func_code,
             is_create: false,
             is_read: false,
@@ -96,12 +96,12 @@ const RoleRightPage: React.FC = () => {
   const handlePermissionChange = (
     funcId: number,
     funcCode: string,
-    permission: keyof Omit<RoleRight, 'sysfuction_id' | 'func_code' | 'id'>,
+    permission: keyof Omit<RoleRight, 'sysfunction_id' | 'func_code' | 'id'>,
     value: boolean
   ) => {
     const newRights = new Map(rights);
     const right = newRights.get(funcId) || {
-      sysfuction_id: funcId,
+      sysfunction_id: funcId,
       func_code: funcCode,
       is_create: false,
       is_read: false,

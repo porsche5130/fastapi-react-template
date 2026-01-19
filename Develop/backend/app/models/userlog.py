@@ -20,7 +20,7 @@ class UserLog(Base):
 
     # 作業資訊
     user_detail_id = Column(Integer, ForeignKey("user_detail.id"), nullable=False, index=True)
-    sysfuction_id = Column(Integer, ForeignKey("sysfuction.id"), nullable=False, index=True)
+    sysfunction_id = Column(Integer, ForeignKey("sysfunction.id"), nullable=False, index=True)
     module_item = Column(String(50), nullable=False, index=True)  # Create/Read/Update/Delete/Print/File
 
     # 資料記錄
@@ -38,7 +38,7 @@ class UserLog(Base):
             name="chk_module_item"
         ),
         Index("idx_userlogs_user", "user_detail_id"),
-        Index("idx_userlogs_function", "sysfuction_id"),
+        Index("idx_userlogs_function", "sysfunction_id"),
         Index("idx_userlogs_action_at", "action_at"),
         Index("idx_userlogs_module", "module_item"),
     )

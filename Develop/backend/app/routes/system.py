@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user_detail import UserDetail
 from app.models.sys_profile import SysProfile
-from app.models.sysfuction import SysFunction
+from app.models.sysfunction import SysFunction
 from app.models.role_right import RoleRight
 
 router = APIRouter()
@@ -109,7 +109,7 @@ async def get_system_functions(
     ).all()
 
     # 建立有權限的功能ID集合
-    authorized_func_ids = set(right.sysfuction_id for right in user_rights)
+    authorized_func_ids = set(right.sysfunction_id for right in user_rights)
 
     # 建立功能字典和樹狀結構
     func_dict = {}

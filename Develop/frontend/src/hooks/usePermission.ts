@@ -22,9 +22,10 @@ export const usePermission = () => {
     try {
       setLoading(true);
       const data = await getUserPermissions();
+      console.log('[usePermission] 載入的權限資料:', data);
       setPermissions(data);
     } catch (error) {
-      console.error('Failed to load permissions:', error);
+      console.error('[usePermission] 載入權限失敗:', error);
       setPermissions(null);
     } finally {
       setLoading(false);

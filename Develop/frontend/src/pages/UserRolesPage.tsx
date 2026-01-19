@@ -27,6 +27,7 @@ const UserRolesPage: React.FC = () => {
   const [editingRole, setEditingRole] = useState<UserRole | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [formData, setFormData] = useState<UserRoleCreate>({
     role_cname: '',
     role_ename: '',
@@ -73,7 +74,8 @@ const UserRolesPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const openModal = (role?: UserRole) => {
+  const openModal = (role?: UserRole, viewMode: boolean = false) => {
+    setIsViewMode(viewMode);
     if (role) {
       setEditingRole(role);
       setFormData({
@@ -226,17 +228,19 @@ const UserRolesPage: React.FC = () => {
                     </td>
                     <td className="actions">
                       {canUpdate && (
-                        <button className="btn-edit" onClick={() => openModal(role)}>
+                        <button className="btn-edit" onClick={() => openModal(role, false)}>
                           {t('common.edit')}
+                        </button>
+                      )}
+                      {!canUpdate && hasPermission('user_role', 'read') && (
+                        <button className="btn-secondary" onClick={() => openModal(role, true)}>
+                          {t('common.view')}
                         </button>
                       )}
                       {canDelete && (
                         <button className="btn-delete" onClick={() => handleDelete(role)}>
                           {t('common.delete')}
                         </button>
-                      )}
-                      {!canUpdate && !canDelete && (
-                        <span style={{ color: '#999', fontSize: '14px' }}>-</span>
                       )}
                     </td>
                   </tr>
@@ -335,7 +339,9 @@ const UserRolesPage: React.FC = () => {
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingRole ? t('common.edit') : t('common.create')}</h2>
+              <h2>
+                {isViewMode ? t('common.view') : (editingRole ? t('common.edit') : t('common.create'))}
+              </h2>
               <button className="modal-close" onClick={closeModal}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>
@@ -347,6 +353,7 @@ const UserRolesPage: React.FC = () => {
                     value={formData.role_cname}
                     onChange={(e) => setFormData({ ...formData, role_cname: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -356,6 +363,7 @@ const UserRolesPage: React.FC = () => {
                     value={formData.role_ename}
                     onChange={(e) => setFormData({ ...formData, role_ename: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group full-width">
@@ -364,6 +372,7 @@ const UserRolesPage: React.FC = () => {
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -372,6 +381,7 @@ const UserRolesPage: React.FC = () => {
                       type="checkbox"
                       checked={formData.is_mana}
                       onChange={(e) => setFormData({ ...formData, is_mana: e.target.checked })}
+                      disabled={isViewMode}
                     />
                     {t('userRoles.isMana')}
                   </label>
@@ -382,6 +392,7 @@ const UserRolesPage: React.FC = () => {
                       type="checkbox"
                       checked={formData.is_active}
                       onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      disabled={isViewMode}
                     />
                     {t('common.active')}
                   </label>
@@ -389,11 +400,13 @@ const UserRolesPage: React.FC = () => {
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={closeModal}>
-                  {t('common.cancel')}
+                  {isViewMode ? t('common.close') : t('common.cancel')}
                 </button>
-                <button type="submit" className="btn-primary">
-                  {t('common.save')}
-                </button>
+                {!isViewMode && (
+                  <button type="submit" className="btn-primary">
+                    {t('common.save')}
+                  </button>
+                )}
               </div>
             </form>
           </div>

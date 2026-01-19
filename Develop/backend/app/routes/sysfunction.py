@@ -10,9 +10,9 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.permissions import check_permission
-from app.models.sysfuction import SysFunction
+from app.models.sysfunction import SysFunction
 from app.models.user_detail import UserDetail
-from app.schemas.sysfuction import SysFunctionResponse, SysFunctionCreate, SysFunctionUpdate
+from app.schemas.sysfunction import SysFunctionResponse, SysFunctionCreate, SysFunctionUpdate
 
 router = APIRouter()
 
@@ -30,10 +30,10 @@ async def get_functions(
     """
     取得系統功能列表
 
-    需要提供 Bearer Token 及 sysfuction 讀取權限
+    需要提供 Bearer Token 及 sysfunction 讀取權限
     """
     # 檢查權限
-    if not check_permission(db, current_user, "sysfuction", "read"):
+    if not check_permission(db, current_user, "sysfunction", "read"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="無權限讀取系統功能"
@@ -67,10 +67,10 @@ async def get_function(
     """
     取得系統功能資訊
 
-    需要提供 Bearer Token 及 sysfuction 讀取權限
+    需要提供 Bearer Token 及 sysfunction 讀取權限
     """
     # 檢查權限
-    if not check_permission(db, current_user, "sysfuction", "read"):
+    if not check_permission(db, current_user, "sysfunction", "read"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="無權限讀取系統功能"
@@ -91,10 +91,10 @@ async def create_function(
     """
     建立系統功能
 
-    需要提供 Bearer Token 及 sysfuction 新增權限
+    需要提供 Bearer Token 及 sysfunction 新增權限
     """
     # 檢查權限
-    if not check_permission(db, current_user, "sysfuction", "create"):
+    if not check_permission(db, current_user, "sysfunction", "create"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="無權限新增系統功能"
@@ -121,10 +121,10 @@ async def update_function(
     """
     更新系統功能
 
-    需要提供 Bearer Token 及 sysfuction 修改權限
+    需要提供 Bearer Token 及 sysfunction 修改權限
     """
     # 檢查權限
-    if not check_permission(db, current_user, "sysfuction", "update"):
+    if not check_permission(db, current_user, "sysfunction", "update"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="無權限修改系統功能"
@@ -158,10 +158,10 @@ async def delete_function(
     """
     刪除系統功能
 
-    需要提供 Bearer Token 及 sysfuction 刪除權限
+    需要提供 Bearer Token 及 sysfunction 刪除權限
     """
     # 檢查權限
-    if not check_permission(db, current_user, "sysfuction", "delete"):
+    if not check_permission(db, current_user, "sysfunction", "delete"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="無權限刪除系統功能"

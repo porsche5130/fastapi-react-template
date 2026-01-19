@@ -54,7 +54,11 @@
       "Bash(pytest:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\n功能權限→完成功能列權限設定\n\n實作功能選單動態權限過濾機制：\n- 根據使用者角色權限動態顯示功能選單\n- 必須具備「讀取」權限才顯示功能\n- 多角色採用聯集\\(OR\\)邏輯\n- 自動隱藏沒有子功能的節點\n\n後端修改：\n- 修改 app/routes/system.py get_system_functions\\(\\)\n- 新增權限檢查邏輯，查詢 role_right 表\n- 實作節點過濾，遞迴移除空節點\n\n前端修改：\n- 修改 App.tsx 註冊 RoleRightPage 路由\n- 修正 JSX.Element 類型為 React.ReactElement\n\n文件更新：\n- 角色權限設定作業.md 新增「功能選單顯示規則」章節\n- 詳細說明權限檢查邏輯與節點過濾規則\n\n測試狀態：\n- 11 個 TDD 測試全部通過\n- 功能選單正確根據權限顯示\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit -m \"$\\(cat <<''EOF''\n功能權限→非系統管理角色過濾系統管理功能\n\n實作角色類型過濾機制：\n- 非系統管理角色\\(is_mana=false\\)在設定權限時\n- 不顯示系統管理功能\\(is_mana=true\\)\n- 防止非系統管理角色取得系統管理權限\n\n後端修改：\n- app/routes/role_right.py\n  - get_functions_with_permissions\\(\\) 新增 role_id 參數\n  - 根據角色 is_mana 屬性過濾功能清單\n  - 非系統管理角色過濾掉 is_mana=true 的功能\n\n前端修改：\n- src/services/roleRightService.ts\n  - getFunctionsWithPermissions\\(\\) 支援傳入 role_id\n- src/pages/RoleRightPage.tsx\n  - handleRoleChange\\(\\) 選擇角色時重新載入功能清單\n  - 傳入 role_id 以觸發後端過濾邏輯\n\n文件更新：\n- 角色權限設定作業.md\n  - 新增功能過濾規則說明\n  - 詳細說明系統管理角色與一般角色的差異\n\n測試驗證：\n- 系統管理角色：顯示所有功能\n- 非系統管理角色：不顯示系統管理功能\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(python3:*)",
+      "Bash(find:*)",
+      "Bash(kill:*)",
+      "Bash(cmd //c \"taskkill //F //PID 308672 & taskkill //F //PID 112176 & taskkill //F //PID 13616\")"
     ]
   }
 }

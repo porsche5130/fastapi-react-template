@@ -32,6 +32,7 @@ const SysFunctionsPage: React.FC = () => {
   const [editingFunction, setEditingFunction] = useState<SysFunction | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [moduleItemActions, setModuleItemActions] = useState<string[]>([]);
   const [formData, setFormData] = useState<SysFunctionCreate>({
     func_code: '',
@@ -139,7 +140,8 @@ const SysFunctionsPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const openModal = (func?: SysFunction) => {
+  const openModal = (func?: SysFunction, viewMode: boolean = false) => {
+    setIsViewMode(viewMode);
     if (func) {
       setEditingFunction(func);
       setFormData({
@@ -259,7 +261,7 @@ const SysFunctionsPage: React.FC = () => {
     );
   }
 
-  if (!hasPermission('sysfuction', 'read')) {
+  if (!hasPermission('sysfunction', 'read')) {
     return (
       <div className="page-container">
         <div className="error-message">{t('common.noPermission')}</div>
@@ -267,9 +269,9 @@ const SysFunctionsPage: React.FC = () => {
     );
   }
 
-  const canCreate = hasPermission('sysfuction', 'create');
-  const canUpdate = hasPermission('sysfuction', 'update');
-  const canDelete = hasPermission('sysfuction', 'delete');
+  const canCreate = hasPermission('sysfunction', 'create');
+  const canUpdate = hasPermission('sysfunction', 'update');
+  const canDelete = hasPermission('sysfunction', 'delete');
 
   return (
     <div className="page-container">
@@ -398,17 +400,19 @@ const SysFunctionsPage: React.FC = () => {
                     </td>
                     <td className="actions">
                       {canUpdate && (
-                        <button className="btn-edit" onClick={() => openModal(func)}>
+                        <button className="btn-edit" onClick={() => openModal(func, false)}>
                           {t('common.edit')}
+                        </button>
+                      )}
+                      {!canUpdate && hasPermission('sysfunction', 'read') && (
+                        <button className="btn-secondary" onClick={() => openModal(func, true)}>
+                          {t('common.view')}
                         </button>
                       )}
                       {canDelete && (
                         <button className="btn-delete" onClick={() => handleDelete(func)}>
                           {t('common.delete')}
                         </button>
-                      )}
-                      {!canUpdate && !canDelete && (
-                        <span style={{ color: '#999', fontSize: '14px' }}>-</span>
                       )}
                     </td>
                   </tr>
@@ -507,7 +511,9 @@ const SysFunctionsPage: React.FC = () => {
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingFunction ? t('common.edit') : t('common.create')}</h2>
+              <h2>
+                {isViewMode ? t('common.view') : (editingFunction ? t('common.edit') : t('common.create'))}
+              </h2>
               <button className="modal-close" onClick={closeModal}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>
@@ -519,6 +525,7 @@ const SysFunctionsPage: React.FC = () => {
                     value={formData.func_code}
                     onChange={(e) => setFormData({ ...formData, func_code: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -528,6 +535,7 @@ const SysFunctionsPage: React.FC = () => {
                     value={formData.func_cname}
                     onChange={(e) => setFormData({ ...formData, func_cname: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -537,6 +545,7 @@ const SysFunctionsPage: React.FC = () => {
                     value={formData.func_ename}
                     onChange={(e) => setFormData({ ...formData, func_ename: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -545,6 +554,7 @@ const SysFunctionsPage: React.FC = () => {
                     value={formData.func_type}
                     onChange={(e) => setFormData({ ...formData, func_type: parseInt(e.target.value) })}
                     required
+                    disabled={isViewMode}
                   >
                     <option value={1}>{t('sysFunctions.types.node')}</option>
                     <option value={2}>{t('sysFunctions.types.function')}</option>
@@ -555,6 +565,7 @@ const SysFunctionsPage: React.FC = () => {
                   <select
                     value={formData.upper_func_id}
                     onChange={(e) => setFormData({ ...formData, upper_func_id: parseInt(e.target.value) })}
+                    disabled={isViewMode}
                   >
                     <option value={0}>{t('sysFunctions.root')}</option>
                     {functions.filter(f => f.func_type === 1).map(f => (
@@ -569,6 +580,7 @@ const SysFunctionsPage: React.FC = () => {
                     value={formData.func_order}
                     onChange={(e) => setFormData({ ...formData, func_order: parseInt(e.target.value) })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -577,6 +589,7 @@ const SysFunctionsPage: React.FC = () => {
                     type="text"
                     value={formData.func_icon}
                     onChange={(e) => setFormData({ ...formData, func_icon: e.target.value })}
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -586,9 +599,9 @@ const SysFunctionsPage: React.FC = () => {
                     value={formData.func_module_name}
                     onChange={(e) => setFormData({ ...formData, func_module_name: e.target.value })}
                     placeholder={formData.func_type === 2 ? "例如: users, settings, dashboard" : "節點類型無需填寫"}
-                    disabled={formData.func_type === 1}
+                    disabled={isViewMode || formData.func_type === 1}
                     required={formData.func_type === 2}
-                    style={formData.func_type === 1 ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
+                    style={(isViewMode || formData.func_type === 1) ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}
                   />
                 </div>
                 <div className="form-group full-width">
@@ -601,8 +614,8 @@ const SysFunctionsPage: React.FC = () => {
                           display: 'flex',
                           alignItems: 'center',
                           marginRight: '15px',
-                          cursor: formData.func_type === 1 ? 'not-allowed' : 'pointer',
-                          opacity: formData.func_type === 1 ? 0.5 : 1
+                          cursor: (isViewMode || formData.func_type === 1) ? 'not-allowed' : 'pointer',
+                          opacity: (isViewMode || formData.func_type === 1) ? 0.5 : 1
                         }}
                       >
                         <input
@@ -615,7 +628,7 @@ const SysFunctionsPage: React.FC = () => {
                               setModuleItemActions(moduleItemActions.filter(a => a !== action));
                             }
                           }}
-                          disabled={formData.func_type === 1}
+                          disabled={isViewMode || formData.func_type === 1}
                           style={{ marginRight: '5px' }}
                         />
                         {t(`sysFunctions.permissions.${action.toLowerCase()}`)}
@@ -634,6 +647,7 @@ const SysFunctionsPage: React.FC = () => {
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -642,6 +656,7 @@ const SysFunctionsPage: React.FC = () => {
                       type="checkbox"
                       checked={formData.is_mana}
                       onChange={(e) => setFormData({ ...formData, is_mana: e.target.checked })}
+                      disabled={isViewMode}
                     />
                     {t('sysFunctions.isMana')}
                   </label>
@@ -652,6 +667,7 @@ const SysFunctionsPage: React.FC = () => {
                       type="checkbox"
                       checked={formData.is_active}
                       onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      disabled={isViewMode}
                     />
                     {t('common.active')}
                   </label>
@@ -659,11 +675,13 @@ const SysFunctionsPage: React.FC = () => {
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={closeModal}>
-                  {t('common.cancel')}
+                  {isViewMode ? t('common.close') : t('common.cancel')}
                 </button>
-                <button type="submit" className="btn-primary">
-                  {t('common.save')}
-                </button>
+                {!isViewMode && (
+                  <button type="submit" className="btn-primary">
+                    {t('common.save')}
+                  </button>
+                )}
               </div>
             </form>
           </div>

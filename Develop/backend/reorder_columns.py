@@ -1,5 +1,5 @@
 """
-重新排序 sysfuction 資料表的欄位順序
+重新排序 sysfunction 資料表的欄位順序
 警告：此操作會重建資料表，請先備份資料！
 """
 import sys
@@ -15,12 +15,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sqlalchemy import create_engine, text
 from app.core.config import settings
 
-def reorder_sysfuction_columns():
-    """重新排序 sysfuction 資料表的欄位"""
+def reorder_sysfunction_columns():
+    """重新排序 sysfunction 資料表的欄位"""
 
     engine = create_engine(str(settings.DATABASE_URL))
 
-    print("警告：此操作將重建 sysfuction 資料表！")
+    print("警告：此操作將重建 sysfunction 資料表！")
     print("請確保已備份資料庫。")
     response = input("是否繼續？(yes/no): ")
 
@@ -34,7 +34,7 @@ def reorder_sysfuction_columns():
         try:
             print("\n步驟 1: 創建新表結構...")
             conn.execute(text("""
-                CREATE TABLE sysfuction_new (
+                CREATE TABLE sysfunction_new (
                     id SERIAL PRIMARY KEY,
                     func_code VARCHAR(200) NOT NULL,
                     func_cname VARCHAR(200) NOT NULL,
@@ -57,7 +57,7 @@ def reorder_sysfuction_columns():
 
             print("\n步驟 2: 複製資料...")
             result = conn.execute(text("""
-                INSERT INTO sysfuction_new
+                INSERT INTO sysfunction_new
                     (id, func_code, func_cname, func_ename, upper_func_id,
                      func_type, func_order, func_icon, func_module_name,
                      module_item, description, is_mana, is_active,
@@ -67,33 +67,33 @@ def reorder_sysfuction_columns():
                     func_type, func_order, func_icon, func_module_name,
                     module_item, description, is_mana, is_active,
                     edit_by, created_at, updated_at
-                FROM sysfuction
+                FROM sysfunction
             """))
             print(f"   [OK] 已複製 {result.rowcount} 筆資料")
 
             print("\n步驟 3: 刪除舊表...")
-            conn.execute(text("DROP TABLE sysfuction CASCADE"))
+            conn.execute(text("DROP TABLE sysfunction CASCADE"))
             print("   [OK] 舊表已刪除")
 
             print("\n步驟 4: 重新命名新表...")
-            conn.execute(text("ALTER TABLE sysfuction_new RENAME TO sysfuction"))
+            conn.execute(text("ALTER TABLE sysfunction_new RENAME TO sysfunction"))
             print("   [OK] 表已重新命名")
 
             print("\n步驟 5: 重建索引...")
-            conn.execute(text("CREATE INDEX idx_sysfuction_code ON sysfuction(func_code)"))
-            conn.execute(text("CREATE INDEX idx_sysfuction_upper ON sysfuction(upper_func_id)"))
-            conn.execute(text("CREATE INDEX idx_sysfuction_type ON sysfuction(func_type)"))
-            conn.execute(text("CREATE INDEX idx_sysfuction_active ON sysfuction(is_active)"))
-            conn.execute(text("CREATE INDEX idx_sysfuction_order ON sysfuction(func_order)"))
+            conn.execute(text("CREATE INDEX idx_sysfunction_code ON sysfunction(func_code)"))
+            conn.execute(text("CREATE INDEX idx_sysfunction_upper ON sysfunction(upper_func_id)"))
+            conn.execute(text("CREATE INDEX idx_sysfunction_type ON sysfunction(func_type)"))
+            conn.execute(text("CREATE INDEX idx_sysfunction_active ON sysfunction(is_active)"))
+            conn.execute(text("CREATE INDEX idx_sysfunction_order ON sysfunction(func_order)"))
             print("   [OK] 索引已重建")
 
             print("\n步驟 6: 重建約束...")
             conn.execute(text("""
-                ALTER TABLE sysfuction
+                ALTER TABLE sysfunction
                 ADD CONSTRAINT chk_func_type CHECK (func_type IN (1, 2))
             """))
             conn.execute(text("""
-                ALTER TABLE sysfuction
+                ALTER TABLE sysfunction
                 ADD CONSTRAINT chk_func_module
                 CHECK (
                     (func_type = 1 AND func_module_name IS NULL) OR
@@ -104,16 +104,16 @@ def reorder_sysfuction_columns():
 
             print("\n步驟 7: 重建外鍵...")
             conn.execute(text("""
-                ALTER TABLE sysfuction
-                ADD CONSTRAINT fk_sysfuction_editor
+                ALTER TABLE sysfunction
+                ADD CONSTRAINT fk_sysfunction_editor
                 FOREIGN KEY (edit_by) REFERENCES user_detail(id)
             """))
             print("   [OK] 外鍵已重建")
 
             print("\n步驟 8: 重置序列...")
             conn.execute(text("""
-                SELECT setval('sysfuction_id_seq',
-                    (SELECT MAX(id) FROM sysfuction), true)
+                SELECT setval('sysfunction_id_seq',
+                    (SELECT MAX(id) FROM sysfunction), true)
             """))
             print("   [OK] 序列已重置")
 
@@ -129,4 +129,4 @@ def reorder_sysfuction_columns():
             raise
 
 if __name__ == "__main__":
-    reorder_sysfuction_columns()
+    reorder_sysfunction_columns()

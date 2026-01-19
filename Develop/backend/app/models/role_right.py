@@ -19,7 +19,7 @@ class RoleRight(Base):
 
     # 關聯欄位
     user_role_id = Column(Integer, ForeignKey("user_role.id", ondelete="CASCADE"), nullable=False, index=True)
-    sysfuction_id = Column(Integer, ForeignKey("sysfuction.id", ondelete="CASCADE"), nullable=False, index=True)
+    sysfunction_id = Column(Integer, ForeignKey("sysfunction.id", ondelete="CASCADE"), nullable=False, index=True)
     func_code = Column(String(20), nullable=False)
 
     # 權限設定
@@ -38,11 +38,11 @@ class RoleRight(Base):
     # 索引與約束
     __table_args__ = (
         Index("idx_role_right_role", "user_role_id"),
-        Index("idx_role_right_function", "sysfuction_id"),
-        Index("idx_role_right_unique", "user_role_id", "sysfuction_id", unique=True),
+        Index("idx_role_right_function", "sysfunction_id"),
+        Index("idx_role_right_unique", "user_role_id", "sysfunction_id", unique=True),
     )
 
     # 關聯
     role = relationship("UserRole", foreign_keys=[user_role_id])
-    function = relationship("SysFunction", foreign_keys=[sysfuction_id])
+    function = relationship("SysFunction", foreign_keys=[sysfunction_id])
     editor = relationship("UserDetail", foreign_keys=[edit_by])

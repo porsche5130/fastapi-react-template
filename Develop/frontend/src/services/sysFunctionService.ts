@@ -65,7 +65,7 @@ export interface GetFunctionsParams {
  * 取得系統功能列表
  */
 export const getSysFunctions = async (params?: GetFunctionsParams): Promise<SysFunction[]> => {
-  const response = await axios.get('/api/sysfuction/', { params });
+  const response = await axios.get('/api/sysfunction/', { params });
   return response.data;
 };
 
@@ -73,7 +73,7 @@ export const getSysFunctions = async (params?: GetFunctionsParams): Promise<SysF
  * 取得系統功能資訊
  */
 export const getSysFunction = async (functionId: number): Promise<SysFunction> => {
-  const response = await axios.get(`/api/sysfuction/${functionId}`);
+  const response = await axios.get(`/api/sysfunction/${functionId}`);
   return response.data;
 };
 
@@ -81,7 +81,7 @@ export const getSysFunction = async (functionId: number): Promise<SysFunction> =
  * 建立系統功能
  */
 export const createSysFunction = async (data: SysFunctionCreate): Promise<SysFunction> => {
-  const response = await axios.post('/api/sysfuction/', data);
+  const response = await axios.post('/api/sysfunction/', data);
   return response.data;
 };
 
@@ -89,7 +89,7 @@ export const createSysFunction = async (data: SysFunctionCreate): Promise<SysFun
  * 更新系統功能
  */
 export const updateSysFunction = async (functionId: number, data: SysFunctionUpdate): Promise<SysFunction> => {
-  const response = await axios.put(`/api/sysfuction/${functionId}`, data);
+  const response = await axios.put(`/api/sysfunction/${functionId}`, data);
   return response.data;
 };
 
@@ -97,5 +97,5 @@ export const updateSysFunction = async (functionId: number, data: SysFunctionUpd
  * 刪除系統功能
  */
 export const deleteSysFunction = async (functionId: number): Promise<void> => {
-  await axios.delete(`/api/sysfuction/${functionId}`);
+  await axios.delete(`/api/sysfunction/${functionId}`);
 };

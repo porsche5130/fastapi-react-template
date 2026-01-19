@@ -1,6 +1,6 @@
 """
 批量添加權限檢查腳本
-為 user_role, user_detail, sysfuction 路由添加權限檢查
+為 user_role, user_detail, sysfunction 路由添加權限檢查
 """
 
 import re
@@ -19,8 +19,8 @@ routes_config = [
         "new_import": "from app.core.deps import get_current_user\nfrom app.core.permissions import check_permission"
     },
     {
-        "file": "app/routes/sysfuction.py",
-        "func_code": "sysfuction",
+        "file": "app/routes/sysfunction.py",
+        "func_code": "sysfunction",
         "import_line": "from app.core.deps import get_current_user",
         "new_import": "from app.core.deps import get_current_user\nfrom app.core.permissions import check_permission"
     }
@@ -65,7 +65,7 @@ permission_checks = {
 resource_names = {
     "user_role": "使用者角色",
     "user_detail": "使用者",
-    "sysfuction": "系統功能"
+    "sysfunction": "系統功能"
 }
 
 def add_permission_check(content: str, func_code: str, route_type: str, resource: str) -> str:

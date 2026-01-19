@@ -70,7 +70,7 @@ const AppRoutes: React.FC = () => {
         <Route path="sys_profile" element={<SysProfilePage />} />
         <Route path="roles" element={<UserRolesPage />} />
         <Route path="users" element={<UsersPage />} />
-        <Route path="sysfuction" element={<SysFunctionsPage />} />
+        <Route path="sysfunction" element={<SysFunctionsPage />} />
         <Route path="org_profile" element={<div>組織資料檔案</div>} />
         <Route path="role_right" element={<RoleRightPage />} />
         {/* 保留舊路由以便向後兼容 */}

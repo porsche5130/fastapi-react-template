@@ -33,6 +33,7 @@ const UsersPage: React.FC = () => {
   const [editingUser, setEditingUser] = useState<UserDetail | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [formData, setFormData] = useState<UserDetailCreate>({
     organization_id: 0,
     account: '',
@@ -129,7 +130,8 @@ const UsersPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const openModal = (user?: UserDetail) => {
+  const openModal = (user?: UserDetail, viewMode: boolean = false) => {
+    setIsViewMode(viewMode);
     if (user) {
       setEditingUser(user);
       setFormData({
@@ -346,17 +348,19 @@ const UsersPage: React.FC = () => {
                     </td>
                     <td className="actions">
                       {canUpdate && (
-                        <button className="btn-edit" onClick={() => openModal(user)}>
+                        <button className="btn-edit" onClick={() => openModal(user, false)}>
                           {t('common.edit')}
+                        </button>
+                      )}
+                      {!canUpdate && hasPermission('user_detail', 'read') && (
+                        <button className="btn-secondary" onClick={() => openModal(user, true)}>
+                          {t('common.view')}
                         </button>
                       )}
                       {canDelete && (
                         <button className="btn-delete" onClick={() => handleDelete(user)}>
                           {t('common.delete')}
                         </button>
-                      )}
-                      {!canUpdate && !canDelete && (
-                        <span style={{ color: '#999', fontSize: '14px' }}>-</span>
                       )}
                     </td>
                   </tr>
@@ -455,7 +459,9 @@ const UsersPage: React.FC = () => {
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingUser ? t('common.edit') : t('common.create')}</h2>
+              <h2>
+                {isViewMode ? t('common.view') : (editingUser ? t('common.edit') : t('common.create'))}
+              </h2>
               <button className="modal-close" onClick={closeModal}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>
@@ -467,6 +473,7 @@ const UsersPage: React.FC = () => {
                     value={formData.account}
                     onChange={(e) => setFormData({ ...formData, account: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -476,24 +483,28 @@ const UsersPage: React.FC = () => {
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                     required
+                    disabled={isViewMode}
                   />
                 </div>
-                <div className="form-group">
-                  <label>{t('users.password')} {!editingUser && '*'}</label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required={!editingUser}
-                    placeholder={editingUser ? t('users.passwordPlaceholder') : ''}
-                  />
-                </div>
+                {!isViewMode && (
+                  <div className="form-group">
+                    <label>{t('users.password')} {!editingUser && '*'}</label>
+                    <input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required={!editingUser}
+                      placeholder={editingUser ? t('users.passwordPlaceholder') : ''}
+                    />
+                  </div>
+                )}
                 <div className="form-group">
                   <label>{t('users.organization')} *</label>
                   <select
                     value={formData.organization_id}
                     onChange={(e) => setFormData({ ...formData, organization_id: parseInt(e.target.value) })}
                     required
+                    disabled={isViewMode}
                   >
                     <option value={0} disabled>{t('users.selectOrganization')}</option>
                     {organizations.map(org => (
@@ -507,6 +518,7 @@ const UsersPage: React.FC = () => {
                     type="text"
                     value={formData.department}
                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -515,6 +527,7 @@ const UsersPage: React.FC = () => {
                     type="text"
                     value={formData.job_title}
                     onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group">
@@ -523,22 +536,30 @@ const UsersPage: React.FC = () => {
                     type="text"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    disabled={isViewMode}
                   />
                 </div>
                 <div className="form-group full-width">
                   <label>{t('users.roles')}</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                    {getAvailableRoles().map(role => (
-                      <label key={role.id} style={{ display: 'flex', alignItems: 'center', marginRight: '15px' }}>
-                        <input
-                          type="checkbox"
-                          checked={formData.user_role.includes(role.id)}
-                          onChange={(e) => handleRoleChange(role.id, e.target.checked)}
-                          style={{ marginRight: '5px' }}
-                        />
-                        {role.role_cname}
-                      </label>
-                    ))}
+                    {(isViewMode ? roles : getAvailableRoles()).map(role => {
+                      // 在檢視模式下，只顯示已分配的角色
+                      if (isViewMode && !formData.user_role.includes(role.id)) {
+                        return null;
+                      }
+                      return (
+                        <label key={role.id} style={{ display: 'flex', alignItems: 'center', marginRight: '15px' }}>
+                          <input
+                            type="checkbox"
+                            checked={formData.user_role.includes(role.id)}
+                            onChange={(e) => handleRoleChange(role.id, e.target.checked)}
+                            style={{ marginRight: '5px' }}
+                            disabled={isViewMode}
+                          />
+                          {role.role_cname}
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
                 <div className="form-group">
@@ -547,6 +568,7 @@ const UsersPage: React.FC = () => {
                       type="checkbox"
                       checked={formData.is_active}
                       onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                      disabled={isViewMode}
                     />
                     {t('common.active')}
                   </label>
@@ -554,11 +576,13 @@ const UsersPage: React.FC = () => {
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={closeModal}>
-                  {t('common.cancel')}
+                  {isViewMode ? t('common.close') : t('common.cancel')}
                 </button>
-                <button type="submit" className="btn-primary">
-                  {t('common.save')}
-                </button>
+                {!isViewMode && (
+                  <button type="submit" className="btn-primary">
+                    {t('common.save')}
+                  </button>
+                )}
               </div>
             </form>
           </div>
