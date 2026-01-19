@@ -215,6 +215,21 @@
     "deleteConfirm": "確定要刪除嗎？",
     "loadFailed": "載入失敗",
     "noData": "無資料",
-    "networkError": "網路錯誤，請稍後再試"
+    "networkError": "網路錯誤，請稍後再試",
+    "saving": "儲存中..."
+  },
+  "roleRight": {
+    "title": "角色權限設定作業",
+    "selectRole": "選擇角色",
+    "pleaseSelectRole": "請選擇角色",
+    "functionName": "功能名稱",
+    "create": "新增",
+    "read": "讀取",
+    "update": "修改",
+    "delete": "刪除",
+    "print": "列印",
+    "file": "產檔",
+    "saveSuccess": "權限設定儲存成功",
+    "saveFailed": "權限設定儲存失敗"
   }
 }

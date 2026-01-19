@@ -12,6 +12,7 @@ from app.core.deps import get_current_user
 from app.models.user_detail import UserDetail
 from app.models.sys_profile import SysProfile
 from app.models.sysfuction import SysFunction
+from app.models.role_right import RoleRight
 
 router = APIRouter()
 
@@ -84,44 +85,87 @@ async def get_system_functions(
     current_user: UserDetail = Depends(get_current_user)
 ):
     """
-    取得系統功能選單（依照 func_order 排序）
+    取得系統功能選單（依照 func_order 排序，並根據使用者權限過濾）
 
     需要提供 Bearer Token
+
+    權限邏輯:
+    - 只顯示使用者有「讀取」權限的功能
+    - 多角色採用聯集(OR)邏輯
+    - 節點下若無任何可用功能，則不顯示該節點
     """
     # 查詢所有啟用的功能，按 func_order 排序
     functions = db.query(SysFunction).filter(
         SysFunction.is_active == True
     ).order_by(SysFunction.func_order).all()
 
+    # 取得使用者的所有角色ID
+    user_role_ids = current_user.user_role if isinstance(current_user.user_role, list) else []
+
+    # 查詢使用者所有角色的權限設定
+    user_rights = db.query(RoleRight).filter(
+        RoleRight.user_role_id.in_(user_role_ids),
+        RoleRight.is_read == True  # 必須有讀取權限
+    ).all()
+
+    # 建立有權限的功能ID集合
+    authorized_func_ids = set(right.sysfuction_id for right in user_rights)
+
     # 建立功能字典和樹狀結構
     func_dict = {}
-    root_functions = []
 
-    # 第一次遍歷：建立字典
+    # 第一次遍歷：建立字典（只包含有權限的功能）
     for func in functions:
-        func_dict[func.id] = {
-            "id": func.id,
-            "func_code": func.func_code,
-            "func_cname": func.func_cname,
-            "func_ename": func.func_ename,
-            "func_type": func.func_type,
-            "func_order": func.func_order,
-            "func_icon": func.func_icon,
-            "func_module_name": func.func_module_name,
-            "module_item": func.module_item,
-            "upper_func_id": func.upper_func_id,
-            "is_mana": func.is_mana,
-            "children": []
-        }
+        # 節點類型(func_type=1)或有讀取權限的功能才加入
+        if func.func_type == 1 or func.id in authorized_func_ids:
+            func_dict[func.id] = {
+                "id": func.id,
+                "func_code": func.func_code,
+                "func_cname": func.func_cname,
+                "func_ename": func.func_ename,
+                "func_type": func.func_type,
+                "func_order": func.func_order,
+                "func_icon": func.func_icon,
+                "func_module_name": func.func_module_name,
+                "module_item": func.module_item,
+                "upper_func_id": func.upper_func_id,
+                "is_mana": func.is_mana,
+                "children": []
+            }
 
     # 第二次遍歷：建立樹狀結構
-    for func in functions:
-        func_data = func_dict[func.id]
-        if func.upper_func_id == 0:
-            # 根節點
-            root_functions.append(func_data)
-        elif func.upper_func_id in func_dict:
-            # 子節點
-            func_dict[func.upper_func_id]["children"].append(func_data)
+    for func_id, func_data in list(func_dict.items()):
+        if func_data["upper_func_id"] == 0:
+            # 根節點暫時不處理
+            pass
+        elif func_data["upper_func_id"] in func_dict:
+            # 子節點加入父節點
+            func_dict[func_data["upper_func_id"]]["children"].append(func_data)
+
+    # 第三次遍歷：移除沒有子功能的節點
+    def filter_empty_nodes(node):
+        """遞迴過濾空節點"""
+        if node["func_type"] == 2:
+            # 功能類型，保留
+            return True
+
+        # 節點類型，先過濾子節點
+        node["children"] = [
+            child for child in node["children"]
+            if filter_empty_nodes(child)
+        ]
+
+        # 如果節點下沒有子功能，則移除
+        return len(node["children"]) > 0
+
+    # 收集根節點並過濾
+    root_functions = []
+    for func_id, func_data in func_dict.items():
+        if func_data["upper_func_id"] == 0:
+            if filter_empty_nodes(func_data):
+                root_functions.append(func_data)
+
+    # 按 func_order 排序根節點
+    root_functions.sort(key=lambda x: x["func_order"])
 
     return root_functions

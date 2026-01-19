@@ -215,6 +215,21 @@
     "deleteConfirm": "Are you sure you want to delete?",
     "loadFailed": "Load failed",
     "noData": "No data",
-    "networkError": "Network error, please try again later"
+    "networkError": "Network error, please try again later",
+    "saving": "Saving..."
+  },
+  "roleRight": {
+    "title": "Role Permission Settings",
+    "selectRole": "Select Role",
+    "pleaseSelectRole": "Please select a role",
+    "functionName": "Function Name",
+    "create": "Create",
+    "read": "Read",
+    "update": "Update",
+    "delete": "Delete",
+    "print": "Print",
+    "file": "File",
+    "saveSuccess": "Permission settings saved successfully",
+    "saveFailed": "Failed to save permission settings"
   }
 }

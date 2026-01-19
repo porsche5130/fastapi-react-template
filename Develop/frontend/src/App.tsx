@@ -16,6 +16,7 @@ import SysProfilePage from './pages/SysProfilePage';
 import UserRolesPage from './pages/UserRolesPage';
 import UsersPage from './pages/UsersPage';
 import SysFunctionsPage from './pages/SysFunctionsPage';
+import RoleRightPage from './pages/RoleRightPage';
 import MainLayout from './components/MainLayout';
 import PrivateRoute from './components/PrivateRoute';
 
@@ -71,7 +72,7 @@ const AppRoutes: React.FC = () => {
         <Route path="users" element={<UsersPage />} />
         <Route path="sysfuction" element={<SysFunctionsPage />} />
         <Route path="org_profile" element={<div>組織資料檔案</div>} />
-        <Route path="role_rights" element={<div>角色權限設定檔</div>} />
+        <Route path="role_right" element={<RoleRightPage />} />
         {/* 保留舊路由以便向後兼容 */}
         <Route path="user_role" element={<Navigate to="/roles" replace />} />
         <Route path="user_detail" element={<Navigate to="/users" replace />} />

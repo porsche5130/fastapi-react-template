@@ -49,7 +49,9 @@
       "Bash(powershell.exe -Command \"Get-Process python | Stop-Process -Force\")",
       "Bash(git init:*)",
       "Bash(git config:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: P-PA6.4 Management System\n\n- Backend: FastAPI with PostgreSQL integration\n  - System functions \\(sysfuction\\) CRUD with constraint handling\n  - User management, roles, and organizations\n  - Authentication and authorization with JWT\n  - i18n support for API responses\n\n- Frontend: React TypeScript with i18n\n  - System function settings with CRUD operations\n  - Dynamic field disabling based on function type \\(node/function\\)\n  - Multilingual support \\(zh-TW, en\\)\n  - User/role/organization management pages\n  - Permission configuration with i18n labels\n\n- Database: PostgreSQL schema with constraints\n  - Check constraints for data integrity \\(chk_func_module\\)\n  - JSONB fields for flexible permissions\n  - module_item as string array for permission types\n\n- Configuration: Environment setup, CORS, static files\n- Fixed: Database constraint handling for node vs function types\n- Fixed: Multiple backend process conflicts\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(pytest:*)"
     ]
   }
 }
