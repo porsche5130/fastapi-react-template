@@ -10,6 +10,7 @@ from sqlalchemy.sql import func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.permissions import check_permission
 from app.models.organization import Organization
 from app.models.user_detail import UserDetail
 from app.schemas.organization import OrganizationResponse, OrganizationCreate, OrganizationUpdate
@@ -34,8 +35,15 @@ async def get_organizations(
     - **is_active**: 是否啟用 (可選)
     - **search**: 搜尋關鍵字 (組織代碼或名稱)
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 organizations 讀取權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "organizations", "read"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限讀取組織設定"
+        )
+
     query = db.query(Organization)
 
     if is_active is not None:
@@ -63,8 +71,15 @@ async def get_organization(
 
     - **organization_id**: 組織單位 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 organizations 讀取權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "organizations", "read"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限讀取組織設定"
+        )
+
     organization = db.query(Organization).filter(Organization.id == organization_id).first()
 
     if not organization:
@@ -85,8 +100,15 @@ async def create_organization(
     """
     建立組織單位
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 organizations 新增權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "organizations", "create"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限新增組織設定"
+        )
+
     # 檢查組織代碼是否已存在
     existing = db.query(Organization).filter(Organization.org_code == organization_data.org_code).first()
     if existing:
@@ -120,8 +142,15 @@ async def update_organization(
 
     - **organization_id**: 組織單位 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 organizations 修改權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "organizations", "update"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限修改組織設定"
+        )
+
     # 查詢組織單位
     organization = db.query(Organization).filter(Organization.id == organization_id).first()
     if not organization:
@@ -167,8 +196,15 @@ async def delete_organization(
 
     - **organization_id**: 組織單位 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 organizations 刪除權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "organizations", "delete"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限刪除組織設定"
+        )
+
     # 查詢組織單位
     organization = db.query(Organization).filter(Organization.id == organization_id).first()
     if not organization:

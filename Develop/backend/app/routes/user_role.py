@@ -10,6 +10,7 @@ from sqlalchemy.sql import func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.core.permissions import check_permission
 from app.models.user_role import UserRole
 from app.models.user_detail import UserDetail
 from app.schemas.user_role import UserRoleResponse, UserRoleCreate, UserRoleUpdate
@@ -34,8 +35,15 @@ async def get_user_roles(
     - **is_active**: 是否啟用 (可選)
     - **search**: 搜尋關鍵字 (角色中英文名稱)
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 user_role 讀取權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "user_role", "read"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限讀取使用者角色"
+        )
+
     query = db.query(UserRole)
 
     if is_active is not None:
@@ -63,8 +71,15 @@ async def get_user_role(
 
     - **role_id**: 角色 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 user_role 讀取權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "user_role", "read"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限讀取使用者角色"
+        )
+
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
 
     if not role:
@@ -85,8 +100,15 @@ async def create_user_role(
     """
     建立使用者角色
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 user_role 新增權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "user_role", "create"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限新增使用者角色"
+        )
+
     # 檢查角色名稱是否已存在
     existing = db.query(UserRole).filter(
         (UserRole.role_cname == role_data.role_cname) |
@@ -123,8 +145,15 @@ async def update_user_role(
 
     - **role_id**: 角色 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 user_role 修改權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "user_role", "update"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限修改使用者角色"
+        )
+
     # 查詢角色
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
     if not role:
@@ -173,8 +202,15 @@ async def delete_user_role(
 
     - **role_id**: 角色 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 user_role 刪除權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "user_role", "delete"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限刪除使用者角色"
+        )
+
     # 查詢角色
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
     if not role:

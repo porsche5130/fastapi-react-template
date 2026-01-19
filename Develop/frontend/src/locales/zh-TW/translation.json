@@ -27,7 +27,11 @@
     "inactive": "停用",
     "memo": "備註",
     "error": "發生錯誤",
-    "confirmDelete": "確定要刪除嗎？"
+    "confirmDelete": "確定要刪除嗎？",
+    "noPermission": "您沒有權限存取此功能",
+    "noCreatePermission": "您沒有新增權限",
+    "noUpdatePermission": "您沒有修改權限",
+    "noDeletePermission": "您沒有刪除權限"
   },
   "auth": {
     "login": "使用者登入",

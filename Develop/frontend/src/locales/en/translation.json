@@ -27,7 +27,11 @@
     "inactive": "Inactive",
     "memo": "Memo",
     "error": "Error occurred",
-    "confirmDelete": "Are you sure you want to delete?"
+    "confirmDelete": "Are you sure you want to delete?",
+    "noPermission": "You do not have permission to access this feature",
+    "noCreatePermission": "You do not have create permission",
+    "noUpdatePermission": "You do not have update permission",
+    "noDeletePermission": "You do not have delete permission"
   },
   "auth": {
     "login": "User Login",

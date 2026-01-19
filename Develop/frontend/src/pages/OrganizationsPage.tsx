@@ -13,10 +13,12 @@ import {
   updateOrganization,
   deleteOrganization
 } from '../services/organizationService';
+import { usePermission } from '../hooks/usePermission';
 import '../styles/DataTable.css';
 
 const OrganizationsPage: React.FC = () => {
   const { t } = useTranslation();
+  const { hasPermission, loading: permissionLoading } = usePermission();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -152,13 +154,36 @@ const OrganizationsPage: React.FC = () => {
     return types[type] || type.toString();
   };
 
+  // 檢查權限
+  if (permissionLoading) {
+    return (
+      <div className="page-container">
+        <div className="loading">{t('common.loading')}</div>
+      </div>
+    );
+  }
+
+  if (!hasPermission('organizations', 'read')) {
+    return (
+      <div className="page-container">
+        <div className="error-message">{t('common.noPermission')}</div>
+      </div>
+    );
+  }
+
+  const canCreate = hasPermission('organizations', 'create');
+  const canUpdate = hasPermission('organizations', 'update');
+  const canDelete = hasPermission('organizations', 'delete');
+
   return (
     <div className="page-container">
       <div className="page-header">
         <h1>{t('organizations.title')}</h1>
-        <button className="btn-primary" onClick={() => openModal()}>
-          {t('common.create')}
-        </button>
+        {canCreate && (
+          <button className="btn-primary" onClick={() => openModal()}>
+            {t('common.create')}
+          </button>
+        )}
       </div>
 
       <div className="search-bar">
@@ -209,12 +234,19 @@ const OrganizationsPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="actions">
-                      <button className="btn-edit" onClick={() => openModal(org)}>
-                        {t('common.edit')}
-                      </button>
-                      <button className="btn-delete" onClick={() => handleDelete(org)}>
-                        {t('common.delete')}
-                      </button>
+                      {canUpdate && (
+                        <button className="btn-edit" onClick={() => openModal(org)}>
+                          {t('common.edit')}
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button className="btn-delete" onClick={() => handleDelete(org)}>
+                          {t('common.delete')}
+                        </button>
+                      )}
+                      {!canUpdate && !canDelete && (
+                        <span style={{ color: '#999', fontSize: '14px' }}>-</span>
+                      )}
                     </td>
                   </tr>
                 ))}

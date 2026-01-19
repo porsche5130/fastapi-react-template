@@ -12,10 +12,12 @@ import {
   updateSysProfile
 } from '../services/sysProfileService';
 import { getOrganizations, Organization } from '../services/organizationService';
+import { usePermission } from '../hooks/usePermission';
 import '../styles/DataTable.css';
 
 const SysProfilePage: React.FC = () => {
   const { t } = useTranslation();
+  const { hasPermission, loading: permissionLoading } = usePermission();
   const [profile, setProfile] = useState<SysProfile | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,6 +76,23 @@ const SysProfilePage: React.FC = () => {
     }
   };
 
+  // 檢查讀取權限
+  if (permissionLoading) {
+    return (
+      <div className="page-container">
+        <div className="loading">{t('common.loading')}</div>
+      </div>
+    );
+  }
+
+  if (!hasPermission('sys_profile', 'read')) {
+    return (
+      <div className="page-container">
+        <div className="error-message">{t('common.noPermission')}</div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="page-container">
@@ -90,6 +109,9 @@ const SysProfilePage: React.FC = () => {
     );
   }
 
+  // 檢查修改權限
+  const canUpdate = hasPermission('sys_profile', 'update');
+
   return (
     <div className="page-container">
       <div className="page-header">
@@ -105,6 +127,7 @@ const SysProfilePage: React.FC = () => {
                   type="checkbox"
                   checked={formData.is_service || false}
                   onChange={(e) => setFormData({ ...formData, is_service: e.target.checked })}
+                  disabled={!canUpdate}
                 />
                 {t('sysProfile.isService')} 
                 <span style={{ marginLeft: '8px', color: formData.is_service ? '#28a745' : '#dc3545' }}>
@@ -120,6 +143,7 @@ const SysProfilePage: React.FC = () => {
                 value={formData.sys_url || ''}
                 onChange={(e) => setFormData({ ...formData, sys_url: e.target.value })}
                 required
+                disabled={!canUpdate}
               />
             </div>
 
@@ -130,6 +154,7 @@ const SysProfilePage: React.FC = () => {
                 value={formData.sys_ctitle || ''}
                 onChange={(e) => setFormData({ ...formData, sys_ctitle: e.target.value })}
                 required
+                disabled={!canUpdate}
               />
             </div>
 
@@ -140,6 +165,7 @@ const SysProfilePage: React.FC = () => {
                 value={formData.sys_etitle || ''}
                 onChange={(e) => setFormData({ ...formData, sys_etitle: e.target.value })}
                 required
+                disabled={!canUpdate}
               />
             </div>
 
@@ -150,6 +176,7 @@ const SysProfilePage: React.FC = () => {
                 value={formData.sys_ccopyright || ''}
                 onChange={(e) => setFormData({ ...formData, sys_ccopyright: e.target.value })}
                 required
+                disabled={!canUpdate}
               />
             </div>
 
@@ -160,6 +187,7 @@ const SysProfilePage: React.FC = () => {
                 value={formData.sys_ecopyright || ''}
                 onChange={(e) => setFormData({ ...formData, sys_ecopyright: e.target.value })}
                 required
+                disabled={!canUpdate}
               />
             </div>
 
@@ -169,6 +197,7 @@ const SysProfilePage: React.FC = () => {
                 value={formData.sys_organization || 1}
                 onChange={(e) => setFormData({ ...formData, sys_organization: parseInt(e.target.value) })}
                 required
+                disabled={!canUpdate}
               >
                 {organizations.map((org) => (
                   <option key={org.id} value={org.id}>
@@ -185,14 +214,22 @@ const SysProfilePage: React.FC = () => {
                 value={formData.sys_mana_email || ''}
                 onChange={(e) => setFormData({ ...formData, sys_mana_email: e.target.value })}
                 required
+                disabled={!canUpdate}
               />
             </div>
           </div>
 
           <div className="modal-actions" style={{ marginTop: '24px' }}>
-            <button type="submit" className="btn-primary" disabled={saving}>
-              {saving ? t('common.loading') : t('common.save')}
-            </button>
+            {canUpdate && (
+              <button type="submit" className="btn-primary" disabled={saving}>
+                {saving ? t('common.loading') : t('common.save')}
+              </button>
+            )}
+            {!canUpdate && (
+              <div style={{ color: '#dc3545', fontSize: '14px' }}>
+                {t('common.noUpdatePermission')}
+              </div>
+            )}
           </div>
         </form>
       </div>

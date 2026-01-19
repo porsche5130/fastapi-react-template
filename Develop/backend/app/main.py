@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
-from app.routes import auth, system, organization, sys_profile, user_role, user_detail, sysfuction, role_right
+from app.routes import auth, system, organization, sys_profile, user_role, user_detail, sysfuction, role_right, permissions
 
 # 建立 FastAPI 應用程式
 app = FastAPI(
@@ -41,6 +41,7 @@ app.include_router(user_role.router, prefix="/api/user_role", tags=["使用者�
 app.include_router(user_detail.router, prefix="/api/user_detail", tags=["使用者管理"])
 app.include_router(sysfuction.router, prefix="/api/sysfuction", tags=["系統功能管理"])
 app.include_router(role_right.router, prefix="/api/role_right", tags=["角色權限管理"])
+app.include_router(permissions.router, prefix="/api/permissions", tags=["權限查詢"])
 
 @app.get("/", tags=["根路徑"])
 async def root():
