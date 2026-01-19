@@ -27,7 +27,18 @@ async def get_functions(
     db: Session = Depends(get_db),
     current_user: UserDetail = Depends(get_current_user)
 ):
-    """取得系統功能列表"""
+    """
+    取得系統功能列表
+
+    需要提供 Bearer Token 及 sysfuction 讀取權限
+    """
+    # 檢查權限
+    if not check_permission(db, current_user, "sysfuction", "read"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限讀取系統功能"
+        )
+
     query = db.query(SysFunction)
 
     if is_active is not None:
@@ -53,7 +64,18 @@ async def get_function(
     db: Session = Depends(get_db),
     current_user: UserDetail = Depends(get_current_user)
 ):
-    """取得系統功能資訊"""
+    """
+    取得系統功能資訊
+
+    需要提供 Bearer Token 及 sysfuction 讀取權限
+    """
+    # 檢查權限
+    if not check_permission(db, current_user, "sysfuction", "read"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限讀取系統功能"
+        )
+
     function = db.query(SysFunction).filter(SysFunction.id == function_id).first()
     if not function:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="找不到系統功能")
@@ -66,7 +88,18 @@ async def create_function(
     db: Session = Depends(get_db),
     current_user: UserDetail = Depends(get_current_user)
 ):
-    """建立系統功能"""
+    """
+    建立系統功能
+
+    需要提供 Bearer Token 及 sysfuction 新增權限
+    """
+    # 檢查權限
+    if not check_permission(db, current_user, "sysfuction", "create"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限新增系統功能"
+        )
+
     existing = db.query(SysFunction).filter(SysFunction.func_code == function_data.func_code).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="功能代碼已存在")
@@ -85,7 +118,18 @@ async def update_function(
     db: Session = Depends(get_db),
     current_user: UserDetail = Depends(get_current_user)
 ):
-    """更新系統功能"""
+    """
+    更新系統功能
+
+    需要提供 Bearer Token 及 sysfuction 修改權限
+    """
+    # 檢查權限
+    if not check_permission(db, current_user, "sysfuction", "update"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限修改系統功能"
+        )
+
     function = db.query(SysFunction).filter(SysFunction.id == function_id).first()
     if not function:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="找不到系統功能")
@@ -111,7 +155,18 @@ async def delete_function(
     db: Session = Depends(get_db),
     current_user: UserDetail = Depends(get_current_user)
 ):
-    """刪除系統功能"""
+    """
+    刪除系統功能
+
+    需要提供 Bearer Token 及 sysfuction 刪除權限
+    """
+    # 檢查權限
+    if not check_permission(db, current_user, "sysfuction", "delete"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限刪除系統功能"
+        )
+
     function = db.query(SysFunction).filter(SysFunction.id == function_id).first()
     if not function:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="找不到系統功能")

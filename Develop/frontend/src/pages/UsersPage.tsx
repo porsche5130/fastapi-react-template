@@ -16,10 +16,12 @@ import {
 import { getOrganizations, Organization } from '../services/organizationService';
 import { getUserRoles, UserRole } from '../services/userRoleService';
 import { getSysProfile } from '../services/sysProfileService';
+import { usePermission } from '../hooks/usePermission';
 import '../styles/DataTable.css';
 
 const UsersPage: React.FC = () => {
   const { t } = useTranslation();
+  const { hasPermission, loading: permissionLoading } = usePermission();
   const [users, setUsers] = useState<UserDetail[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
@@ -245,13 +247,36 @@ const UsersPage: React.FC = () => {
     return roles.filter(role => !role.is_mana); // 其他組織只能選擇非系統管理角色
   };
 
+  // 檢查權限
+  if (permissionLoading) {
+    return (
+      <div className="page-container">
+        <div className="loading">{t('common.loading')}</div>
+      </div>
+    );
+  }
+
+  if (!hasPermission('user_detail', 'read')) {
+    return (
+      <div className="page-container">
+        <div className="error-message">{t('common.noPermission')}</div>
+      </div>
+    );
+  }
+
+  const canCreate = hasPermission('user_detail', 'create');
+  const canUpdate = hasPermission('user_detail', 'update');
+  const canDelete = hasPermission('user_detail', 'delete');
+
   return (
     <div className="page-container">
       <div className="page-header">
         <h1>{t('users.title')}</h1>
-        <button className="btn-primary" onClick={() => openModal()}>
-          {t('common.create')}
-        </button>
+        {canCreate && (
+          <button className="btn-primary" onClick={() => openModal()}>
+            {t('common.create')}
+          </button>
+        )}
       </div>
 
       <div className="search-bar">
@@ -320,12 +345,19 @@ const UsersPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="actions">
-                      <button className="btn-edit" onClick={() => openModal(user)}>
-                        {t('common.edit')}
-                      </button>
-                      <button className="btn-delete" onClick={() => handleDelete(user)}>
-                        {t('common.delete')}
-                      </button>
+                      {canUpdate && (
+                        <button className="btn-edit" onClick={() => openModal(user)}>
+                          {t('common.edit')}
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button className="btn-delete" onClick={() => handleDelete(user)}>
+                          {t('common.delete')}
+                        </button>
+                      )}
+                      {!canUpdate && !canDelete && (
+                        <span style={{ color: '#999', fontSize: '14px' }}>-</span>
+                      )}
                     </td>
                   </tr>
                 ))}

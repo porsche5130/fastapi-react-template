@@ -43,8 +43,15 @@ async def get_users(
     - **organization_id**: 組織單位ID (可選)
     - **search**: 搜尋關鍵字 (帳號或名稱)
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 user_detail 讀取權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "user_detail", "read"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限讀取使用者"
+        )
+
     query = db.query(UserDetail)
 
     if is_active is not None:
@@ -75,8 +82,15 @@ async def get_user(
 
     - **user_id**: 使用者 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 user_detail 讀取權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "user_detail", "read"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限讀取使用者"
+        )
+
     user = db.query(UserDetail).filter(UserDetail.id == user_id).first()
 
     if not user:
@@ -97,8 +111,15 @@ async def create_user(
     """
     建立使用者
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 user_detail 新增權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "user_detail", "create"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限新增使用者"
+        )
+
     # 檢查帳號是否已存在
     existing = db.query(UserDetail).filter(UserDetail.account == user_data.account).first()
     if existing:
@@ -148,8 +169,15 @@ async def update_user(
 
     - **user_id**: 使用者 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 user_detail 修改權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "user_detail", "update"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限修改使用者"
+        )
+
     # 查詢使用者
     user = db.query(UserDetail).filter(UserDetail.id == user_id).first()
     if not user:
@@ -213,8 +241,15 @@ async def delete_user(
 
     - **user_id**: 使用者 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 user_detail 刪除權限
     """
+    # 檢查權限
+    if not check_permission(db, current_user, "user_detail", "delete"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限刪除使用者"
+        )
+
     # 查詢使用者
     user = db.query(UserDetail).filter(UserDetail.id == user_id).first()
     if not user:
