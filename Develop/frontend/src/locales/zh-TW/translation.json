@@ -169,6 +169,8 @@
     "funcOrder": "排序順序",
     "funcIcon": "圖示",
     "funcModuleName": "模組名稱",
+    "funcModuleNamePlaceholder": "例如: users, settings, dashboard",
+    "funcModuleNameDisabled": "節點類型無需填寫",
     "moduleItem": "可設定權限",
     "description": "功能說明",
     "parent": "上層功能",
@@ -213,6 +215,8 @@
   "message": {
     "success": "操作成功",
     "failed": "操作失敗",
+    "createSuccess": "新增成功",
+    "createFailed": "新增失敗",
     "saveSuccess": "儲存成功",
     "saveFailed": "儲存失敗",
     "deleteSuccess": "刪除成功",
@@ -236,5 +240,55 @@
     "file": "產檔",
     "saveSuccess": "權限設定儲存成功",
     "saveFailed": "權限設定儲存失敗"
+  },
+  "userLogs": {
+    "title": "使用者日誌查詢",
+    "filters": {
+      "user": "使用者",
+      "function": "功能",
+      "operation": "操作",
+      "status": "狀態",
+      "startTime": "開始時間",
+      "endTime": "結束時間",
+      "allUsers": "全部",
+      "allFunctions": "全部",
+      "allOperations": "全部",
+      "allStatuses": "全部",
+      "statusNormal": "正常",
+      "statusError": "異常",
+      "reset": "重置"
+    },
+    "operations": {
+      "view": "瀏覽",
+      "create": "新增",
+      "read": "檢視",
+      "update": "修改",
+      "delete": "刪除",
+      "print": "列印",
+      "file": "檔案",
+      "login": "登入"
+    },
+    "table": {
+      "id": "ID",
+      "user": "使用者",
+      "sessionId": "Session ID",
+      "function": "功能",
+      "dataId": "資料序號",
+      "operation": "操作類型",
+      "time": "操作時間",
+      "status": "狀態",
+      "actions": "操作",
+      "viewDetail": "檢視"
+    },
+    "detail": {
+      "title": "日誌詳情",
+      "basicInfo": "基本資訊",
+      "dataInfo": "資料內容",
+      "lookData": "檢視資料",
+      "changeData": "異動資料",
+      "errorDetail": "錯誤詳情",
+      "noData": "無資料",
+      "close": "關閉"
+    }
   }
 }

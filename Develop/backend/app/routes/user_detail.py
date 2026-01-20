@@ -3,6 +3,7 @@ User Detail Routes
 使用者設定相關路由
 """
 
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -20,8 +21,31 @@ from app.schemas.user_detail import (
     UserDetailUpdate,
     PasswordChange
 )
+from app.services.userlog_service import UserLogService
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def user_detail_to_dict(user: UserDetail) -> dict:
+    """將 UserDetail 物件轉換為完整資料字典 (不含密碼)"""
+    return {
+        "id": user.id,
+        "account": user.account,  # account 欄位儲存的是電子郵件
+        "email": user.account,     # 為了日誌清晰，也對應到 email
+        "username": user.username,
+        "organization_id": user.organization_id,
+        "department": user.department,
+        "job_title": user.job_title,
+        "phone": user.phone,
+        "user_role": user.user_role,
+        "is_active": user.is_active,
+        "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
+        "last_login_ip": user.last_login_ip,
+        "edit_by": user.edit_by,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "updated_at": user.updated_at.isoformat() if user.updated_at else None
+    }
 
 
 @router.get("/", response_model=List[UserDetailResponse], summary="取得使用者列表")
@@ -186,6 +210,9 @@ async def update_user(
             detail="找不到使用者"
         )
 
+    # 保存原始資料用於日誌
+    original_data = user_detail_to_dict(user)
+
     # 如果更新帳號，檢查是否重複
     if user_data.account and user_data.account != user.account:
         existing = db.query(UserDetail).filter(
@@ -257,6 +284,9 @@ async def delete_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="找不到使用者"
         )
+
+    # 保存刪除前資料用於日誌
+    deleted_data = user_detail_to_dict(user)
 
     # 不能刪除自己
     if user.id == current_user.id:

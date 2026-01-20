@@ -3,6 +3,7 @@ System Profile Routes
 系統設定相關路由
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
@@ -13,8 +14,28 @@ from app.core.permissions import check_permission
 from app.models.sys_profile import SysProfile
 from app.models.user_detail import UserDetail
 from app.schemas.sys_profile import SysProfileResponse, SysProfileUpdate
+from app.services.userlog_service import UserLogService
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def sys_profile_to_dict(profile: SysProfile) -> dict:
+    """將 SysProfile 物件轉換為完整資料字典"""
+    return {
+        "id": profile.id,
+        "is_service": profile.is_service,
+        "sys_url": profile.sys_url,
+        "sys_ctitle": profile.sys_ctitle,
+        "sys_etitle": profile.sys_etitle,
+        "sys_ccopyright": profile.sys_ccopyright,
+        "sys_ecopyright": profile.sys_ecopyright,
+        "sys_organization": profile.sys_organization,
+        "sys_mana_email": profile.sys_mana_email,
+        "edit_by": profile.edit_by,
+        "created_at": profile.created_at.isoformat() if profile.created_at else None,
+        "updated_at": profile.updated_at.isoformat() if profile.updated_at else None
+    }
 
 
 @router.get("/", response_model=SysProfileResponse, summary="取得系統設定")
@@ -70,6 +91,9 @@ async def update_sys_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="系統設定不存在"
         )
+
+    # 保存原始資料用於日誌
+    original_data = sys_profile_to_dict(profile)
 
     # 更新欄位
     update_data = profile_data.model_dump(exclude_unset=True)

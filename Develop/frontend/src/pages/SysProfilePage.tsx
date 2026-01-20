@@ -3,7 +3,7 @@
  * 顯示和修改系統設定（id=1）
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   SysProfile,
@@ -13,11 +13,15 @@ import {
 } from '../services/sysProfileService';
 import { getOrganizations, Organization } from '../services/organizationService';
 import { usePermission } from '../hooks/usePermission';
+import { useFunctionName } from '../hooks/useFunctionName';
+import { logView, logUpdate } from '../utils/userLogHelper';
 import '../styles/DataTable.css';
 
 const SysProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
+  const pageTitle = useFunctionName('sys_profile');
+  const hasInitialized = useRef(false);
   const [profile, setProfile] = useState<SysProfile | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,19 +62,43 @@ const SysProfilePage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadProfile();
-    loadOrganizations();
-  }, []);
+    // 等待權限載入完成後再檢查權限並載入資料
+    if (!permissionLoading && hasPermission('sys_profile', 'read') && !hasInitialized.current) {
+      hasInitialized.current = true;
+      const initPage = async () => {
+        try {
+          await loadProfile();
+          await loadOrganizations();
+          await logView('sys_profile', {}, null);
+        } catch (err: any) {
+          const errorMsg = err.response?.data?.detail || err.message || t('message.loadFailed');
+          await logView('sys_profile', {}, errorMsg);
+        }
+      };
+      initPage();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissionLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
       setSaving(true);
-      await updateSysProfile(formData);
+      const updated = await updateSysProfile(formData);
+      await logUpdate('sys_profile', profile as any, updated as any);
       alert(t('message.saveSuccess'));
       loadProfile();
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('message.saveFailed'));
+      const errorMsg = err.response?.data?.detail || t('message.saveFailed');
+
+      try {
+        await logUpdate('sys_profile', profile as any, formData, errorMsg);
+      } catch (logErr) {
+        console.error('[SysProfilePage] Failed to log error:', logErr);
+      }
+
+      alert(errorMsg);
     } finally {
       setSaving(false);
     }
@@ -115,7 +143,7 @@ const SysProfilePage: React.FC = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>{t('sysProfile.title')}</h1>
+        <h1>{pageTitle}</h1>
       </div>
 
       <div className="data-table-container">

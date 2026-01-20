@@ -3,6 +3,7 @@ User Role Routes
 使用者角色相關路由
 """
 
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -14,8 +15,25 @@ from app.core.permissions import check_permission
 from app.models.user_role import UserRole
 from app.models.user_detail import UserDetail
 from app.schemas.user_role import UserRoleResponse, UserRoleCreate, UserRoleUpdate
+from app.services.userlog_service import UserLogService
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def user_role_to_dict(role: UserRole) -> dict:
+    """將 UserRole 物件轉換為完整資料字典"""
+    return {
+        "id": role.id,
+        "role_cname": role.role_cname,
+        "role_ename": role.role_ename,
+        "description": role.description,
+        "is_mana": role.is_mana,
+        "is_active": role.is_active,
+        "edit_by": role.edit_by,
+        "created_at": role.created_at.isoformat() if role.created_at else None,
+        "updated_at": role.updated_at.isoformat() if role.updated_at else None
+    }
 
 
 @router.get("/", response_model=List[UserRoleResponse], summary="取得使用者角色列表")
@@ -162,6 +180,9 @@ async def update_user_role(
             detail="找不到使用者角色"
         )
 
+    # 保存原始資料用於日誌
+    original_data = user_role_to_dict(role)
+
     # 如果更新角色名稱，檢查是否重複
     if role_data.role_cname or role_data.role_ename:
         existing = db.query(UserRole).filter(
@@ -219,23 +240,22 @@ async def delete_user_role(
             detail="找不到使用者角色"
         )
 
-    # 檢查是否有使用者使用此角色
+    # 保存刪除前資料用於日誌
+    deleted_data = user_role_to_dict(role)
+
+    # 檢查是否有使用者使用此角色（包含已停用的）
     users_with_role = db.query(UserDetail).filter(
-        UserDetail.user_role.contains([role_id]),
-        UserDetail.is_active == True
+        UserDetail.user_role.contains([role_id])
     ).count()
 
     if users_with_role > 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"無法刪除：此角色仍有 {users_with_role} 位啟用中的使用者使用"
+            detail=f"無法刪除：此角色仍有 {users_with_role} 位使用者使用"
         )
 
-    # 軟刪除
-    role.is_active = False
-    role.edit_by = current_user.id
-    role.updated_at = func.now()
-
+    # 真正刪除
+    db.delete(role)
     db.commit()
 
     return None

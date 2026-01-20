@@ -3,11 +3,18 @@ PA6.4 Backend Main Application
 FastAPI 主應用程式
 """
 
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
-from app.routes import auth, system, organization, sys_profile, user_role, user_detail, sysfunction, role_right, permissions
+from app.routes import auth, system, organization, sys_profile, user_role, user_detail, sysfunction, role_right, permissions, userlog
+
+# 配置日誌
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # 建立 FastAPI 應用程式
 app = FastAPI(
@@ -42,6 +49,7 @@ app.include_router(user_detail.router, prefix="/api/user_detail", tags=["使用�
 app.include_router(sysfunction.router, prefix="/api/sysfunction", tags=["系統功能管理"])
 app.include_router(role_right.router, prefix="/api/role_right", tags=["角色權限管理"])
 app.include_router(permissions.router, prefix="/api/permissions", tags=["權限查詢"])
+app.include_router(userlog.router, prefix="/api/userlogs", tags=["使用者日誌"])
 
 @app.get("/", tags=["根路徑"])
 async def root():

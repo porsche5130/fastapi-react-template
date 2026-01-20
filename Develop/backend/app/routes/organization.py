@@ -3,6 +3,7 @@ Organization Routes
 組織單位相關路由
 """
 
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -14,8 +15,31 @@ from app.core.permissions import check_permission
 from app.models.organization import Organization
 from app.models.user_detail import UserDetail
 from app.schemas.organization import OrganizationResponse, OrganizationCreate, OrganizationUpdate
+from app.services.userlog_service import UserLogService
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def organization_to_dict(org: Organization) -> dict:
+    """將組織單位物件轉換為完整字典"""
+    return {
+        "id": org.id,
+        "org_code": org.org_code,
+        "org_name": org.org_name,
+        "org_type": org.org_type,
+        "contact_person": org.contact_person,
+        "contact_email": org.contact_email,
+        "contact_phone": org.contact_phone,
+        "address": org.address,
+        "phone": org.phone,
+        "is_mana": org.is_mana,
+        "is_active": org.is_active,
+        "memo": org.memo,
+        "edit_by": org.edit_by,
+        "created_at": org.created_at.isoformat() if org.created_at else None,
+        "updated_at": org.updated_at.isoformat() if org.updated_at else None
+    }
 
 
 @router.get("/", response_model=List[OrganizationResponse], summary="取得組織單位列表")
@@ -171,7 +195,7 @@ async def update_organization(
                 detail="組織代碼已存在"
             )
 
-    # 更新欄位
+    # 更新組織單位資料
     update_data = organization_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(organization, field, value)
@@ -213,23 +237,19 @@ async def delete_organization(
             detail="找不到組織單位"
         )
 
-    # 檢查是否有使用者使用此組織
+    # 檢查是否有使用者使用此組織（包含已停用的）
     users_count = db.query(UserDetail).filter(
-        UserDetail.organization_id == organization_id,
-        UserDetail.is_active == True
+        UserDetail.organization_id == organization_id
     ).count()
 
     if users_count > 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"無法刪除：此組織單位仍有 {users_count} 位啟用中的使用者"
+            detail=f"無法刪除：此組織單位仍有 {users_count} 位使用者"
         )
 
-    # 軟刪除
-    organization.is_active = False
-    organization.edit_by = current_user.id
-    organization.updated_at = func.now()
-
+    # 真正刪除
+    db.delete(organization)
     db.commit()
 
     return None

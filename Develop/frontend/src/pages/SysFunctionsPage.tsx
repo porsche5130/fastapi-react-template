@@ -3,7 +3,7 @@
  * 系統功能的 CRUD 管理
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   SysFunction,
@@ -14,11 +14,15 @@ import {
   deleteSysFunction
 } from '../services/sysFunctionService';
 import { usePermission } from '../hooks/usePermission';
+import { useFunctionName } from '../hooks/useFunctionName';
+import { logView, logCreate, logRead, logUpdate, logDelete } from '../utils/userLogHelper';
 import '../styles/DataTable.css';
 
 const SysFunctionsPage: React.FC = () => {
   const { t } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
+  const pageTitle = useFunctionName('sysfunction');
+  const hasInitialized = useRef(false);
   const [functions, setFunctions] = useState<SysFunction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,8 +67,22 @@ const SysFunctionsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadFunctions();
-  }, []);
+    // 等待權限載入完成後再檢查權限並載入資料
+    if (!permissionLoading && hasPermission('sysfunction', 'read') && !hasInitialized.current) {
+      hasInitialized.current = true;
+      const initPage = async () => {
+        try {
+          await loadFunctions();
+          await logView('sysfunction', { search: search || undefined }, null);
+        } catch (err: any) {
+          const errorMsg = err.response?.data?.detail || err.message || t('message.loadFailed');
+          await logView('sysfunction', { search: search || undefined }, errorMsg);
+        }
+      };
+      initPage();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissionLoading]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -140,7 +158,7 @@ const SysFunctionsPage: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const openModal = (func?: SysFunction, viewMode: boolean = false) => {
+  const openModal = async (func?: SysFunction, viewMode: boolean = false) => {
     setIsViewMode(viewMode);
     if (func) {
       setEditingFunction(func);
@@ -163,6 +181,15 @@ const SysFunctionsPage: React.FC = () => {
         setModuleItemActions(func.module_item);
       } else {
         setModuleItemActions([]);
+      }
+
+      // 如果是查看模式，記錄 Read 日誌
+      if (viewMode) {
+        try {
+          await logRead('sysfunction', { id: func.id, func_code: func.func_code, func_cname: func.func_cname });
+        } catch (err) {
+          console.error('[SysFunctionsPage] Failed to log Read:', err);
+        }
       }
     } else {
       setEditingFunction(null);
@@ -192,30 +219,47 @@ const SysFunctionsPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      // module_item 直接使用選中的操作類型字串陣列
-      const submitData = {
-        ...formData,
-        module_item: moduleItemActions,
-        // 如果是節點類型 (func_type=1)，func_module_name 必須是 null 或 undefined
-        // 如果是功能類型 (func_type=2)，func_module_name 不能是空字串
-        func_module_name: formData.func_type === 1
-          ? undefined
-          : (formData.func_module_name || undefined),
-        // 空字串的欄位轉為 undefined
-        func_icon: formData.func_icon || undefined,
-        description: formData.description || undefined
-      };
 
+    // module_item 直接使用選中的操作類型字串陣列
+    const submitData = {
+      ...formData,
+      module_item: moduleItemActions,
+      // 如果是節點類型 (func_type=1)，func_module_name 必須是 null 或 undefined
+      // 如果是功能類型 (func_type=2)，func_module_name 不能是空字串
+      func_module_name: formData.func_type === 1
+        ? undefined
+        : (formData.func_module_name || undefined),
+      // 空字串的欄位轉為 undefined
+      func_icon: formData.func_icon || undefined,
+      description: formData.description || undefined
+    };
+
+    try {
       if (editingFunction) {
-        await updateSysFunction(editingFunction.id, submitData);
+        const updatedFunc = await updateSysFunction(editingFunction.id, submitData);
+        await logUpdate('sysfunction', editingFunction as any, updatedFunc as any);
+        alert(t('message.saveSuccess'));
       } else {
-        await createSysFunction(submitData);
+        const newFunc = await createSysFunction(submitData);
+        await logCreate('sysfunction', newFunc as any);
+        alert(t('message.createSuccess'));
       }
       closeModal();
       loadFunctions();
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('common.error'));
+      const errorMsg = err.response?.data?.detail || t('common.error');
+
+      try {
+        if (editingFunction) {
+          await logUpdate('sysfunction', editingFunction as any, submitData, errorMsg);
+        } else {
+          await logCreate('sysfunction', submitData, errorMsg);
+        }
+      } catch (logErr) {
+        console.error('[SysFunctionsPage] Failed to log error:', logErr);
+      }
+
+      alert(errorMsg);
     }
   };
 
@@ -224,21 +268,43 @@ const SysFunctionsPage: React.FC = () => {
 
     try {
       await deleteSysFunction(func.id);
+      await logDelete('sysfunction', { id: func.id, func_code: func.func_code, func_cname: func.func_cname });
+      alert(t('message.deleteSuccess'));
       loadFunctions();
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('common.error'));
+      const errorMsg = err.response?.data?.detail || t('common.error');
+
+      try {
+        await logDelete('sysfunction', { id: func.id, func_code: func.func_code, func_cname: func.func_cname }, errorMsg);
+      } catch (logErr) {
+        console.error('[SysFunctionsPage] Failed to log error:', logErr);
+      }
+
+      alert(errorMsg);
     }
   };
 
   const handleStatusToggle = async (func: SysFunction) => {
     try {
-      await updateSysFunction(func.id, {
+      const oldData = { ...func };
+      const newData = {
         ...func,
         is_active: !func.is_active
-      });
+      };
+
+      const updatedFunc = await updateSysFunction(func.id, newData);
+      await logUpdate('sysfunction', oldData as any, updatedFunc as any);
       loadFunctions();
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('common.error'));
+      const errorMsg = err.response?.data?.detail || t('common.error');
+
+      try {
+        await logUpdate('sysfunction', func as any, { ...func, is_active: !func.is_active }, errorMsg);
+      } catch (logErr) {
+        console.error('[SysFunctionsPage] Failed to log error:', logErr);
+      }
+
+      alert(errorMsg);
     }
   };
 
@@ -276,7 +342,7 @@ const SysFunctionsPage: React.FC = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>{t('sysFunctions.title')}</h1>
+        <h1>{pageTitle}</h1>
         {canCreate && (
           <button className="btn-primary" onClick={() => openModal()}>
             {t('common.create')}
@@ -598,7 +664,7 @@ const SysFunctionsPage: React.FC = () => {
                     type="text"
                     value={formData.func_module_name}
                     onChange={(e) => setFormData({ ...formData, func_module_name: e.target.value })}
-                    placeholder={formData.func_type === 2 ? "例如: users, settings, dashboard" : "節點類型無需填寫"}
+                    placeholder={formData.func_type === 2 ? t('sysFunctions.funcModuleNamePlaceholder') : t('sysFunctions.funcModuleNameDisabled')}
                     disabled={isViewMode || formData.func_type === 1}
                     required={formData.func_type === 2}
                     style={(isViewMode || formData.func_type === 1) ? { backgroundColor: '#f5f5f5', cursor: 'not-allowed' } : {}}

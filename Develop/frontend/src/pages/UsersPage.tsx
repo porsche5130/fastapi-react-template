@@ -3,7 +3,7 @@
  * 使用者的 CRUD 管理
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   UserDetail,
@@ -17,11 +17,14 @@ import { getOrganizations, Organization } from '../services/organizationService'
 import { getUserRoles, UserRole } from '../services/userRoleService';
 import { getSysProfile } from '../services/sysProfileService';
 import { usePermission } from '../hooks/usePermission';
+import { useFunctionName } from '../hooks/useFunctionName';
+import { logView, logCreate, logUpdate, logDelete } from '../utils/userLogHelper';
 import '../styles/DataTable.css';
 
 const UsersPage: React.FC = () => {
   const { t } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
+  const pageTitle = useFunctionName('user_detail');
   const [users, setUsers] = useState<UserDetail[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
@@ -34,6 +37,7 @@ const UsersPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isViewMode, setIsViewMode] = useState(false);
+  const hasInitialized = useRef(false);
   const [formData, setFormData] = useState<UserDetailCreate>({
     organization_id: 0,
     account: '',
@@ -87,11 +91,28 @@ const UsersPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadUsers();
-    loadOrganizations();
-    loadRoles();
-    loadSysProfile();
-  }, []);
+    // 等待權限載入完成後再檢查權限並載入資料
+    if (!permissionLoading && hasPermission('user_detail', 'read') && !hasInitialized.current) {
+      hasInitialized.current = true;
+
+      const initPage = async () => {
+        try {
+          await loadUsers();
+          await loadOrganizations();
+          await loadRoles();
+          await loadSysProfile();
+          // 記錄功能開啟成功
+          await logView('user_detail', { search: search || undefined }, null);
+        } catch (err: any) {
+          const errorMsg = err.response?.data?.detail || err.message || t('message.loadFailed');
+          // 記錄功能開啟失敗
+          await logView('user_detail', { search: search || undefined }, errorMsg);
+        }
+      };
+      initPage();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissionLoading]);
 
   // 當組織變更時，如果不是系統管理公司，則移除已選擇的 is_mana 角色
   useEffect(() => {
@@ -185,14 +206,29 @@ const UsersPage: React.FC = () => {
         if (formData.password) {
           updateData.password = formData.password;
         }
-        await updateUser(editingUser.id, updateData);
+        // 修改使用者
+        const updatedUser = await updateUser(editingUser.id, updateData);
+        // 記錄成功的更新操作 - 使用舊資料和新回傳的完整資料
+        await logUpdate('user_detail', editingUser as any, updatedUser as any);
+        alert(t('message.saveSuccess'));
       } else {
-        await createUser(formData);
+        // 新增使用者
+        const newUser = await createUser(formData);
+        // 記錄成功的新增操作 - 使用後端回傳的完整資料
+        await logCreate('user_detail', newUser as any);
+        alert(t('message.createSuccess'));
       }
       closeModal();
       loadUsers();
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('common.error'));
+      // 記錄失敗的操作
+      const errorMsg = err.response?.data?.detail || t('common.error');
+      if (editingUser) {
+        await logUpdate('user_detail', editingUser as any, formData, errorMsg);
+      } else {
+        await logCreate('user_detail', formData, errorMsg);
+      }
+      alert(errorMsg);
     }
   };
 
@@ -201,21 +237,32 @@ const UsersPage: React.FC = () => {
 
     try {
       await deleteUser(user.id);
+      // 記錄成功的刪除操作
+      await logDelete('user_detail', user as any);
+      alert(t('message.deleteSuccess'));
       loadUsers();
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('common.error'));
+      // 記錄失敗的刪除操作
+      const errorMsg = err.response?.data?.detail || t('common.error');
+      await logDelete('user_detail', user as any, errorMsg);
+      alert(errorMsg);
     }
   };
 
   const handleStatusToggle = async (user: UserDetail) => {
     try {
-      await updateUser(user.id, {
+      const updatedUser = await updateUser(user.id, {
         ...user,
         is_active: !user.is_active
       });
+      // 記錄成功的狀態切換操作
+      await logUpdate('user_detail', user as any, updatedUser as any);
       loadUsers();
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('common.error'));
+      // 記錄失敗的狀態切換操作
+      const errorMsg = err.response?.data?.detail || t('common.error');
+      await logUpdate('user_detail', user as any, { ...user, is_active: !user.is_active }, errorMsg);
+      alert(errorMsg);
     }
   };
 
@@ -273,7 +320,7 @@ const UsersPage: React.FC = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>{t('users.title')}</h1>
+        <h1>{pageTitle}</h1>
         {canCreate && (
           <button className="btn-primary" onClick={() => openModal()}>
             {t('common.create')}

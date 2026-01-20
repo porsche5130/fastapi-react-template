@@ -3,7 +3,7 @@
  * 組織單位的 CRUD 管理
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Organization,
@@ -14,11 +14,14 @@ import {
   deleteOrganization
 } from '../services/organizationService';
 import { usePermission } from '../hooks/usePermission';
+import { useFunctionName } from '../hooks/useFunctionName';
+import { logView, logCreate, logUpdate, logDelete } from '../utils/userLogHelper';
 import '../styles/DataTable.css';
 
 const OrganizationsPage: React.FC = () => {
   const { t } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
+  const pageTitle = useFunctionName('organizations');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +31,7 @@ const OrganizationsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isViewMode, setIsViewMode] = useState(false);
+  const hasInitialized = useRef(false);
   const [formData, setFormData] = useState<OrganizationCreate>({
     org_code: '',
     org_name: '',
@@ -56,8 +60,27 @@ const OrganizationsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadOrganizations();
-  }, []);
+    // 等待權限載入完成後再檢查權限並載入資料
+    // 使用 ref 確保只執行一次，避免 StrictMode 重複執行
+    if (!permissionLoading && hasPermission('organizations', 'read') && !hasInitialized.current) {
+      hasInitialized.current = true;
+
+      // 記錄功能開啟（View）
+      const initPage = async () => {
+        try {
+          await loadOrganizations();
+          // 功能正確開啟，記錄成功
+          await logView('organizations', { search: search || undefined }, null);
+        } catch (err: any) {
+          // 功能開啟發生錯誤，記錄錯誤
+          const errorMsg = err.response?.data?.detail || err.message || t('message.loadFailed');
+          await logView('organizations', { search: search || undefined }, errorMsg);
+        }
+      };
+      initPage();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissionLoading]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -123,16 +146,47 @@ const OrganizationsPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[OrganizationsPage] handleSubmit called');
     try {
       if (editingOrg) {
-        await updateOrganization(editingOrg.id, formData);
+        // 修改組織
+        console.log('[OrganizationsPage] Updating organization...', formData);
+        const updatedOrg = await updateOrganization(editingOrg.id, formData);
+        console.log('[OrganizationsPage] Update successful:', updatedOrg);
+        // 記錄成功的更新操作 - 使用舊資料和新回傳的完整資料
+        await logUpdate('organizations', editingOrg as any, updatedOrg as any);
+        alert(t('message.saveSuccess'));
       } else {
-        await createOrganization(formData);
+        // 新增組織
+        console.log('[OrganizationsPage] Creating organization...', formData);
+        const newOrg = await createOrganization(formData);
+        console.log('[OrganizationsPage] Create successful:', newOrg);
+        // 記錄成功的新增操作 - 使用後端回傳的完整資料
+        await logCreate('organizations', newOrg as any);
+        alert(t('message.createSuccess'));
       }
       closeModal();
       loadOrganizations();
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('common.error'));
+      // 記錄失敗的操作
+      console.error('[OrganizationsPage] Operation failed:', err);
+      console.error('[OrganizationsPage] Error response:', err.response);
+      const errorMsg = err.response?.data?.detail || err.message || t('common.error');
+      console.log('[OrganizationsPage] Error message:', errorMsg);
+
+      // 先記錄失敗日誌
+      try {
+        if (editingOrg) {
+          await logUpdate('organizations', editingOrg as any, formData, errorMsg);
+        } else {
+          await logCreate('organizations', formData, errorMsg);
+        }
+      } catch (logErr) {
+        console.error('[OrganizationsPage] Failed to log error:', logErr);
+      }
+
+      // 顯示錯誤訊息（確保一定會執行）
+      alert(errorMsg);
     }
   };
 
@@ -141,9 +195,15 @@ const OrganizationsPage: React.FC = () => {
 
     try {
       await deleteOrganization(org.id);
+      // 記錄成功的刪除操作
+      await logDelete('organizations', org as any);
+      alert(t('message.deleteSuccess'));
       loadOrganizations();
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('common.error'));
+      // 記錄失敗的刪除操作
+      const errorMsg = err.response?.data?.detail || t('common.error');
+      await logDelete('organizations', org as any, errorMsg);
+      alert(errorMsg);
     }
   };
 
@@ -180,7 +240,7 @@ const OrganizationsPage: React.FC = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>{t('organizations.title')}</h1>
+        <h1>{pageTitle}</h1>
         {canCreate && (
           <button className="btn-primary" onClick={() => openModal()}>
             {t('common.create')}

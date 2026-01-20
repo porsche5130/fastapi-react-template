@@ -3,7 +3,7 @@
  * 使用者角色的 CRUD 管理
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   UserRole,
@@ -14,11 +14,14 @@ import {
   deleteUserRole
 } from '../services/userRoleService';
 import { usePermission } from '../hooks/usePermission';
+import { useFunctionName } from '../hooks/useFunctionName';
+import { logView, logCreate, logUpdate, logDelete } from '../utils/userLogHelper';
 import '../styles/DataTable.css';
 
 const UserRolesPage: React.FC = () => {
   const { t } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
+  const pageTitle = useFunctionName('user_role');
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +31,7 @@ const UserRolesPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isViewMode, setIsViewMode] = useState(false);
+  const hasInitialized = useRef(false);
   const [formData, setFormData] = useState<UserRoleCreate>({
     role_cname: '',
     role_ename: '',
@@ -50,8 +54,24 @@ const UserRolesPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadRoles();
-  }, []);
+    // 等待權限載入完成後再檢查權限並載入資料
+    // 使用 ref 確保只執行一次，避免 StrictMode 重複執行
+    if (!permissionLoading && hasPermission('user_role', 'read') && !hasInitialized.current) {
+      hasInitialized.current = true;
+
+      const initPage = async () => {
+        try {
+          await loadRoles();
+          await logView('user_role', { search: search || undefined }, null);
+        } catch (err: any) {
+          const errorMsg = err.response?.data?.detail || err.message || t('message.loadFailed');
+          await logView('user_role', { search: search || undefined }, errorMsg);
+        }
+      };
+      initPage();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [permissionLoading]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -107,14 +127,24 @@ const UserRolesPage: React.FC = () => {
     e.preventDefault();
     try {
       if (editingRole) {
-        await updateUserRole(editingRole.id, formData);
+        const updatedRole = await updateUserRole(editingRole.id, formData);
+        await logUpdate('user_role', editingRole as any, updatedRole as any);
+        alert(t('message.saveSuccess'));
       } else {
-        await createUserRole(formData);
+        const newRole = await createUserRole(formData);
+        await logCreate('user_role', newRole as any);
+        alert(t('message.createSuccess'));
       }
       closeModal();
       loadRoles();
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('common.error'));
+      const errorMsg = err.response?.data?.detail || t('common.error');
+      if (editingRole) {
+        await logUpdate('user_role', editingRole as any, formData, errorMsg);
+      } else {
+        await logCreate('user_role', formData, errorMsg);
+      }
+      alert(errorMsg);
     }
   };
 
@@ -123,9 +153,13 @@ const UserRolesPage: React.FC = () => {
 
     try {
       await deleteUserRole(role.id);
+      await logDelete('user_role', role as any);
+      alert(t('message.deleteSuccess'));
       loadRoles();
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('common.error'));
+      const errorMsg = err.response?.data?.detail || t('common.error');
+      await logDelete('user_role', role as any, errorMsg);
+      alert(errorMsg);
     }
   };
 
@@ -165,7 +199,7 @@ const UserRolesPage: React.FC = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>{t('userRoles.title')}</h1>
+        <h1>{pageTitle}</h1>
         {canCreate && (
           <button className="btn-primary" onClick={() => openModal()}>
             {t('common.create')}

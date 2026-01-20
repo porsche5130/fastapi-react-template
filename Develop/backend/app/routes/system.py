@@ -3,6 +3,7 @@ System Management Routes
 系統管理相關路由
 """
 
+import logging
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,7 +14,9 @@ from app.models.user_detail import UserDetail
 from app.models.sys_profile import SysProfile
 from app.models.sysfunction import SysFunction
 from app.models.role_right import RoleRight
+from app.services.userlog_service import UserLogService
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 

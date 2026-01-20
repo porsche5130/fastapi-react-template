@@ -3,6 +3,7 @@ Permissions Routes
 權限查詢相關路由
 """
 
+import logging
 from typing import Dict
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -11,7 +12,9 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.role_right import RoleRight
 from app.models.user_detail import UserDetail
+from app.services.userlog_service import UserLogService
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 

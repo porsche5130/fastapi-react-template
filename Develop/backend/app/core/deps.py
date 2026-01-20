@@ -3,6 +3,9 @@ Dependencies
 FastAPI 依賴注入函數
 """
 
+import uuid
+import logging
+from contextvars import ContextVar
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -11,6 +14,11 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.user_detail import UserDetail
+
+logger = logging.getLogger(__name__)
+
+# Context variable for session_id
+session_id_ctx: ContextVar[Optional[str]] = ContextVar("session_id", default=None)
 
 # HTTP Bearer Token 驗證
 security = HTTPBearer()
@@ -49,6 +57,18 @@ def get_current_user(
     if user_id_str is None:
         raise credentials_exception
 
+    # 從 payload 提取 session_id 並存入 context
+    session_id = payload.get("session_id")
+    logger.info(f"Token payload session_id: {session_id}")
+    if session_id:
+        session_id_ctx.set(session_id)
+        logger.info(f"Set session_id to context: {session_id}")
+    else:
+        # 如果 token 中沒有 session_id（舊 token），產生臨時的 session_id
+        temp_session_id = f"legacy-{uuid.uuid4()}"
+        session_id_ctx.set(temp_session_id)
+        logger.warning(f"JWT token 中沒有 session_id, 使用臨時 session_id: {temp_session_id}")
+
     try:
         user_id = int(user_id_str)
     except (ValueError, TypeError):
@@ -65,6 +85,10 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="帳號已停用"
         )
+
+    # 將 session_id 附加到 user 物件上（作為臨時屬性，方便後續日誌記錄使用）
+    user.current_session_id = session_id_ctx.get()
+    logger.info(f"Attached session_id to user object: {user.current_session_id}")
 
     return user
 

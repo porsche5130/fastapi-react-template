@@ -3,7 +3,7 @@
  * 角色權限設定作業頁面
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getFunctionsWithPermissions,
@@ -13,22 +13,44 @@ import {
   RoleRight
 } from '../services/roleRightService';
 import { getUserRoles, UserRole } from '../services/userRoleService';
+import { useFunctionName } from '../hooks/useFunctionName';
+import { logView, logUpdate } from '../utils/userLogHelper';
 import '../styles/RoleRightPage.css';
 
 const RoleRightPage: React.FC = () => {
   const { t } = useTranslation();
+  const pageTitle = useFunctionName('Role_Right');
 
   // 狀態管理
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [functions, setFunctions] = useState<FunctionWithPermissions[]>([]);
   const [rights, setRights] = useState<Map<number, RoleRight>>(new Map());
+  const [originalRights, setOriginalRights] = useState<Map<number, RoleRight>>(new Map());
   const [loading, setLoading] = useState(false);
+  const hasLoadedRef = useRef(false);
+  const hasInitialized = useRef(false);
 
   // 載入角色清單
   useEffect(() => {
-    loadRoles();
-    loadFunctions();
+    // 使用 ref 避免 StrictMode 重複執行
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      const initPage = async () => {
+        try {
+          await loadRoles();
+          await loadFunctions();
+          if (!hasInitialized.current) {
+            hasInitialized.current = true;
+            await logView('role_right', {}, null);
+          }
+        } catch (err: any) {
+          const errorMsg = err.response?.data?.detail || err.message || t('message.loadFailed');
+          await logView('role_right', {}, errorMsg);
+        }
+      };
+      initPage();
+    }
   }, []);
 
   // 載入角色清單
@@ -37,7 +59,7 @@ const RoleRightPage: React.FC = () => {
       const data = await getUserRoles({ is_active: true });
       setRoles(data);
     } catch (error) {
-      console.error('載入角色失敗', error);
+      console.error('[RoleRightPage] Failed to load roles:', error);
     }
   };
 
@@ -47,7 +69,7 @@ const RoleRightPage: React.FC = () => {
       const data = await getFunctionsWithPermissions(roleId);
       setFunctions(data);
     } catch (error) {
-      console.error('載入功能清單失敗', error);
+      console.error('[RoleRightPage] Failed to load functions:', error);
     }
   };
 
@@ -75,18 +97,26 @@ const RoleRightPage: React.FC = () => {
             sysfunction_id: func.id,
             func_code: func.func_code,
             is_create: false,
-            is_read: false,
+            is_read: func.func_code === 'login' ? true : false,  // login功能預設為true
             is_update: false,
             is_delete: false,
             is_print: false,
             is_file: false
           });
+        } else {
+          // 如果已有權限設定,確保login的is_read永遠為true
+          const existingRight = rightsMap.get(func.id)!;
+          if (func.func_code === 'login') {
+            existingRight.is_read = true;
+            rightsMap.set(func.id, existingRight);
+          }
         }
       });
 
       setRights(rightsMap);
+      setOriginalRights(new Map(rightsMap));
     } catch (error) {
-      console.error('載入角色權限失敗', error);
+      console.error('[RoleRightPage] Failed to load role rights:', error);
     } finally {
       setLoading(false);
     }
@@ -99,12 +129,17 @@ const RoleRightPage: React.FC = () => {
     permission: keyof Omit<RoleRight, 'sysfunction_id' | 'func_code' | 'id'>,
     value: boolean
   ) => {
+    // login功能的is_read不可更改
+    if (funcCode === 'login' && permission === 'is_read') {
+      return;
+    }
+
     const newRights = new Map(rights);
     const right = newRights.get(funcId) || {
       sysfunction_id: funcId,
       func_code: funcCode,
       is_create: false,
-      is_read: false,
+      is_read: funcCode === 'login' ? true : false,  // login預設為true
       is_update: false,
       is_delete: false,
       is_print: false,
@@ -123,6 +158,16 @@ const RoleRightPage: React.FC = () => {
       return;
     }
 
+    // 準備舊資料和新資料用於日誌記錄
+    const oldData = {
+      role_id: selectedRoleId,
+      permissions: Array.from(originalRights.values())
+    };
+    const newData = {
+      role_id: selectedRoleId,
+      permissions: Array.from(rights.values())
+    };
+
     try {
       setLoading(true);
 
@@ -130,9 +175,21 @@ const RoleRightPage: React.FC = () => {
       const rightsArray = Array.from(rights.values());
 
       await saveRoleRights(selectedRoleId, rightsArray);
+      await logUpdate('role_right', oldData, newData);
       alert(t('roleRight.saveSuccess'));
+
+      // 更新原始資料為新資料
+      setOriginalRights(new Map(rights));
     } catch (error: any) {
-      alert(error.response?.data?.detail || t('common.error'));
+      const errorMsg = error.response?.data?.detail || t('common.error');
+
+      try {
+        await logUpdate('role_right', oldData, newData, errorMsg);
+      } catch (logErr) {
+        console.error('[RoleRightPage] Failed to log error:', logErr);
+      }
+
+      alert(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -185,14 +242,15 @@ const RoleRightPage: React.FC = () => {
               <td className="permission-cell">
                 <input
                   type="checkbox"
-                  checked={right?.is_read || false}
-                  disabled={!func.available_permissions.read || !selectedRoleId}
+                  checked={func.func_code === 'login' ? true : (right?.is_read || false)}
+                  disabled={func.func_code === 'login' || !func.available_permissions.read || !selectedRoleId}
                   onChange={(e) => handlePermissionChange(
                     func.id,
                     func.func_code,
                     'is_read',
                     e.target.checked
                   )}
+                  title={func.func_code === 'login' ? '登入為必要功能，不可取消' : ''}
                 />
               </td>
 
@@ -269,7 +327,7 @@ const RoleRightPage: React.FC = () => {
 
   return (
     <div className="role-right-page">
-      <h2>{t('roleRight.title')}</h2>
+      <h2>{pageTitle}</h2>
 
       {/* 角色選擇 */}
       <div className="role-selector">

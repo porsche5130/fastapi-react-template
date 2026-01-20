@@ -21,7 +21,9 @@ class UserLog(Base):
     # 作業資訊
     user_detail_id = Column(Integer, ForeignKey("user_detail.id"), nullable=False, index=True)
     sysfunction_id = Column(Integer, ForeignKey("sysfunction.id"), nullable=False, index=True)
-    module_item = Column(String(50), nullable=False, index=True)  # Create/Read/Update/Delete/Print/File
+    module_item = Column(String(50), nullable=False, index=True)  # Create/Read/Update/Delete/Print/File/Login
+    data_id = Column(Integer, nullable=True, index=True)  # 資料序號 (處理的資料 id)
+    session_id = Column(String(36), nullable=True, index=True)  # 登入Session識別碼(UUID)
 
     # 資料記錄
     look_data = Column(JSONB, nullable=False, default=dict)
@@ -34,13 +36,15 @@ class UserLog(Base):
     # 約束
     __table_args__ = (
         CheckConstraint(
-            "module_item IN ('Create', 'Read', 'Update', 'Delete', 'Print', 'File')",
+            "module_item IN ('Create', 'Read', 'Update', 'Delete', 'Print', 'File', 'Login')",
             name="chk_module_item"
         ),
         Index("idx_userlogs_user", "user_detail_id"),
         Index("idx_userlogs_function", "sysfunction_id"),
         Index("idx_userlogs_action_at", "action_at"),
         Index("idx_userlogs_module", "module_item"),
+        Index("idx_userlogs_session", "session_id"),
+        Index("idx_userlogs_data_id", "data_id"),
     )
 
     # 關聯

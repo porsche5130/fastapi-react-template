@@ -20,6 +20,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   const { t, i18n } = useTranslation();
   const [menuItems, setMenuItems] = useState<SystemFunction[]>([]);
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+  const [popupExpandedItems, setPopupExpandedItems] = useState<Set<number>>(new Set());
   const [hoveredItem, setHoveredItem] = useState<number | null>(null);
   const [popupPosition, setPopupPosition] = useState<{ top: number } | null>(null);
 
@@ -29,7 +30,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
       try {
         const functions = await systemService.getFunctions();
         console.log('Loaded menu functions:', functions);
-        setMenuItems(functions);
+        // 過濾掉 func_order 1-9 的項目 (保留 10 以上的項目)
+        const filteredFunctions = filterMenuItems(functions);
+        setMenuItems(filteredFunctions);
       } catch (error) {
         console.error('Failed to load menu items:', error);
       }
@@ -37,6 +40,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
 
     loadMenuItems();
   }, []);
+
+  // 遞迴過濾選單項目，只保留 func_order >= 10 的項目
+  const filterMenuItems = (items: SystemFunction[]): SystemFunction[] => {
+    return items
+      .filter(item => item.func_order >= 10)
+      .map(item => ({
+        ...item,
+        children: item.children ? filterMenuItems(item.children) : undefined
+      }));
+  };
 
   const toggleExpand = (itemId: number) => {
     const newExpanded = new Set(expandedItems);
@@ -64,7 +77,58 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     if (isCollapsed) {
       setHoveredItem(null);
       setPopupPosition(null);
+      setPopupExpandedItems(new Set()); // 清空懸浮選單的展開狀態
     }
+  };
+
+  const togglePopupExpand = (itemId: number) => {
+    const newExpanded = new Set(popupExpandedItems);
+    if (newExpanded.has(itemId)) {
+      newExpanded.delete(itemId);
+    } else {
+      newExpanded.add(itemId);
+    }
+    setPopupExpandedItems(newExpanded);
+  };
+
+  // 遞迴渲染懸浮選單的多層次項目
+  const renderPopupSubmenu = (items: SystemFunction[], level: number): React.ReactNode => {
+    return items.map((child) => {
+      const childPath = child.func_module_name ? `/${child.func_module_name}` : '#';
+      const childName = i18n.language === 'en' ? child.func_ename : child.func_cname;
+      const hasGrandChildren = child.children && child.children.length > 0;
+      const isPopupExpanded = popupExpandedItems.has(child.id);
+
+      return (
+        <div key={child.id} className={`popup-submenu-item level-${level}`}>
+          {hasGrandChildren && child.children ? (
+            <>
+              <div
+                className="popup-submenu-parent"
+                onClick={() => togglePopupExpand(child.id)}
+              >
+                <span className="menu-icon">{child.func_icon || '📁'}</span>
+                <span className="menu-text">{childName}</span>
+                <span className="expand-icon">{isPopupExpanded ? '▼' : '▶'}</span>
+              </div>
+              {isPopupExpanded && (
+                <div className="popup-submenu-children">
+                  {renderPopupSubmenu(child.children, level + 1)}
+                </div>
+              )}
+            </>
+          ) : (
+            <Link
+              to={childPath}
+              className={`popup-menu-link ${isActive(childPath) ? 'active' : ''}`}
+            >
+              <span className="menu-icon">{child.func_icon || '📄'}</span>
+              <span className="menu-text">{childName}</span>
+            </Link>
+          )}
+        </div>
+      );
+    });
   };
 
   const renderMenuItem = (item: SystemFunction, level: number = 0) => {
@@ -113,20 +177,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
                 onMouseLeave={handleMouseLeave}
               >
                 <div className="popup-submenu-header">{displayName}</div>
-                {item.children.map((child) => {
-                  const childPath = child.func_module_name ? `/${child.func_module_name}` : '#';
-                  const childName = i18n.language === 'en' ? child.func_ename : child.func_cname;
-                  return (
-                    <Link
-                      key={child.id}
-                      to={childPath}
-                      className={`popup-menu-link ${isActive(childPath) ? 'active' : ''}`}
-                    >
-                      <span className="menu-icon">{child.func_icon || '📄'}</span>
-                      <span className="menu-text">{childName}</span>
-                    </Link>
-                  );
-                })}
+                {renderPopupSubmenu(item.children, 0)}
               </div>
             )}
           </div>

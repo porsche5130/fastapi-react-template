@@ -58,7 +58,18 @@
       "Bash(python3:*)",
       "Bash(find:*)",
       "Bash(kill:*)",
-      "Bash(cmd //c \"taskkill //F //PID 308672 & taskkill //F //PID 112176 & taskkill //F //PID 13616\")"
+      "Bash(cmd //c \"taskkill //F //PID 308672 & taskkill //F //PID 112176 & taskkill //F //PID 13616\")",
+      "Bash(timeout:*)",
+      "Bash(npm run dev:*)",
+      "Bash(cmd /c \"taskkill /F /PID 32060\")",
+      "Bash(cmd /c \"taskkill /F /FI \"\"IMAGENAME eq python.exe\"\" /FI \"\"MEMUSAGE gt 50000\"\" 2>&1\")",
+      "Bash(for pid in 32060 63856 281480 376116)",
+      "Bash(do cmd /c \"taskkill /F /PID $pid 2>&1\")",
+      "Bash(cmd /c \"FOR %P IN \\(230816 257344 352608 66896 32060 63856 281480 376116\\) DO @taskkill /F /PID %P >NUL 2>&1\")",
+      "Bash(cmd /c \"taskkill /F /IM python.exe\")",
+      "Bash(cmd /c \"taskkill /F /PID 67020 /PID 77424\")",
+      "Bash(PGPASSWORD=dev123 psql:*)",
+      "Bash(npm run build:*)"
     ]
   }
 }

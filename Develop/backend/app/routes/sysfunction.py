@@ -3,6 +3,7 @@ System Function Routes
 系統功能設定相關路由
 """
 
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,8 +14,32 @@ from app.core.permissions import check_permission
 from app.models.sysfunction import SysFunction
 from app.models.user_detail import UserDetail
 from app.schemas.sysfunction import SysFunctionResponse, SysFunctionCreate, SysFunctionUpdate
+from app.services.userlog_service import UserLogService
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def sysfunction_to_dict(func: SysFunction) -> dict:
+    """將 SysFunction 物件轉換為完整資料字典"""
+    return {
+        "id": func.id,
+        "func_code": func.func_code,
+        "func_cname": func.func_cname,
+        "func_ename": func.func_ename,
+        "func_type": func.func_type,
+        "func_order": func.func_order,
+        "func_icon": func.func_icon,
+        "func_module_name": func.func_module_name,
+        "upper_func_id": func.upper_func_id,
+        "module_item": func.module_item,
+        "description": func.description,
+        "is_mana": func.is_mana,
+        "is_active": func.is_active,
+        "edit_by": func.edit_by,
+        "created_at": func.created_at.isoformat() if func.created_at else None,
+        "updated_at": func.updated_at.isoformat() if func.updated_at else None
+    }
 
 
 @router.get("/", response_model=List[SysFunctionResponse], summary="取得系統功能列表")
@@ -55,6 +80,7 @@ async def get_functions(
         )
 
     functions = query.order_by(SysFunction.func_order).offset(skip).limit(limit).all()
+
     return functions
 
 
@@ -79,35 +105,7 @@ async def get_function(
     function = db.query(SysFunction).filter(SysFunction.id == function_id).first()
     if not function:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="找不到系統功能")
-    return function
 
-
-@router.post("/", response_model=SysFunctionResponse, status_code=status.HTTP_201_CREATED, summary="建立系統功能")
-async def create_function(
-    function_data: SysFunctionCreate,
-    db: Session = Depends(get_db),
-    current_user: UserDetail = Depends(get_current_user)
-):
-    """
-    建立系統功能
-
-    需要提供 Bearer Token 及 sysfunction 新增權限
-    """
-    # 檢查權限
-    if not check_permission(db, current_user, "sysfunction", "create"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限新增系統功能"
-        )
-
-    existing = db.query(SysFunction).filter(SysFunction.func_code == function_data.func_code).first()
-    if existing:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="功能代碼已存在")
-
-    new_function = SysFunction(**function_data.model_dump(), edit_by=current_user.id)
-    db.add(new_function)
-    db.commit()
-    db.refresh(new_function)
     return new_function
 
 
@@ -134,6 +132,9 @@ async def update_function(
     if not function:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="找不到系統功能")
 
+    # 保存原始資料用於日誌
+    original_data = sysfunction_to_dict(function)
+
     if function_data.func_code and function_data.func_code != function.func_code:
         existing = db.query(SysFunction).filter(SysFunction.func_code == function_data.func_code).first()
         if existing:
@@ -146,6 +147,7 @@ async def update_function(
 
     db.commit()
     db.refresh(function)
+
     return function
 
 
@@ -170,6 +172,11 @@ async def delete_function(
     function = db.query(SysFunction).filter(SysFunction.id == function_id).first()
     if not function:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="找不到系統功能")
+
+    # 保存刪除前資料用於日誌
+    deleted_data = sysfunction_to_dict(function)
+
     db.delete(function)
     db.commit()
+
     return None
