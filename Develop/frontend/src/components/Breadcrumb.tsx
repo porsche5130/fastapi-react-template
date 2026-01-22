@@ -52,9 +52,9 @@ const Breadcrumb: React.FC = () => {
     if (path !== '/' && path !== '/dashboard') {
       const findMenuItem = (items: SystemFunction[], targetPath: string): SystemFunction | null => {
         for (const item of items) {
-          // 檢查當前項目
-          if (item.func_module_name) {
-            const itemPath = `/${item.func_module_name}`;
+          // 檢查當前項目（使用 func_code 匹配前端路由）
+          if (item.func_code) {
+            const itemPath = `/${item.func_code}`;
             if (itemPath === targetPath) {
               return item;
             }
@@ -94,9 +94,9 @@ const Breadcrumb: React.FC = () => {
           parent = findParent(menuItems, parent.id);
         }
 
-        // 添加父項目到麵包屑
+        // 添加父項目到麵包屑（使用 func_code 作為前端路徑）
         pathItems.forEach(item => {
-          const itemPath = item.func_module_name ? `/${item.func_module_name}` : '#';
+          const itemPath = item.func_code ? `/${item.func_code}` : '#';
           crumbs.push({
             label: i18n.language === 'en' ? item.func_ename : item.func_cname,
             path: itemPath

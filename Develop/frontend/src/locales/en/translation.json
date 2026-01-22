@@ -32,7 +32,15 @@
     "noPermission": "You do not have permission to access this feature",
     "noCreatePermission": "You do not have create permission",
     "noUpdatePermission": "You do not have update permission",
-    "noDeletePermission": "You do not have delete permission"
+    "noDeletePermission": "You do not have delete permission",
+    "showing": "Showing",
+    "of": "of",
+    "page": "Page",
+    "all": "All",
+    "isActive": "Active Status",
+    "createOperation": "Create",
+    "editOperation": "Edit",
+    "viewOperation": "View"
   },
   "auth": {
     "login": "User Login",
@@ -58,6 +66,22 @@
     "apology": "We apologize for any inconvenience",
     "apologyEn": "We apologize for any inconvenience",
     "contact": "If you have any questions, please contact the system administrator"
+  },
+  "home": {
+    "welcome": "Welcome to PA6.4 Management System",
+    "greeting": "Hello",
+    "organizationInfo": "Your current organization",
+    "roleInfo": "Your role",
+    "stats": {
+      "projects": "Total Projects",
+      "active": "Active",
+      "pending": "Pending",
+      "completed": "Completed"
+    },
+    "recentActivities": "Recent Activities",
+    "noActivities": "No recent activities",
+    "quickLinks": "Quick Links",
+    "noQuickLinks": "Quick links feature is under development..."
   },
   "dashboard": {
     "title": "Welcome to PA6.4 Management System",
@@ -168,20 +192,50 @@
     "funcType": "Function Type",
     "funcOrder": "Order",
     "funcIcon": "Icon",
+    "upperFuncId": "Parent Function",
+    "moduleCode": "Module Code",
     "funcModuleName": "Module Name",
+    "funcModuleNamePlaceholder": "e.g.: users, settings, dashboard",
+    "funcModuleNameDisabled": "Not required for node type",
+    "moduleItem": "Configurable Permissions",
     "description": "Description",
     "parent": "Parent Function",
     "root": "Root",
     "isMana": "Management Function",
+    "showOnlyMana": "Show Management Functions Only",
+    "allTypes": "All Types",
     "searchPlaceholder": "Search by code or name",
+    "permissionHint": "Select the operation permissions that can be configured for this function",
+    "permissionDisabledHint": "Node type does not require operation permissions",
     "types": {
       "node": "Node",
       "function": "Function"
     },
-    "moduleItem": "Configurable Permissions",
-    "permissionHint": "Select the operation permissions that can be configured for this function",
-    "permissionDisabledHint": "Node type does not require operation permissions",
     "permissions": {
+      "create": "Create",
+      "read": "Read",
+      "update": "Update",
+      "delete": "Delete",
+      "print": "Print",
+      "file": "File"
+    },
+    "action": {
+      "Create": "Create",
+      "Read": "Read",
+      "Update": "Update",
+      "Delete": "Delete",
+      "Print": "Print",
+      "File": "File",
+      "create": "Create",
+      "read": "Read",
+      "update": "Update",
+      "delete": "Delete",
+      "print": "Print",
+      "file": "File"
+    }
+  },
+  "sysfunction": {
+    "action": {
       "create": "Create",
       "read": "Read",
       "update": "Update",
@@ -213,6 +267,10 @@
   "message": {
     "success": "Operation successful",
     "failed": "Operation failed",
+    "createSuccess": "Created successfully",
+    "createFailed": "Create failed",
+    "updateSuccess": "Updated successfully",
+    "updateFailed": "Update failed",
     "saveSuccess": "Saved successfully",
     "saveFailed": "Save failed",
     "deleteSuccess": "Deleted successfully",
@@ -220,6 +278,7 @@
     "deleteConfirm": "Are you sure you want to delete?",
     "loadFailed": "Load failed",
     "noData": "No data",
+    "noPermission": "You do not have permission",
     "networkError": "Network error, please try again later",
     "saving": "Saving..."
   },
@@ -236,5 +295,77 @@
     "file": "File",
     "saveSuccess": "Permission settings saved successfully",
     "saveFailed": "Failed to save permission settings"
+  },
+  "userLogs": {
+    "title": "User Logs",
+    "filters": {
+      "user": "User",
+      "function": "Function",
+      "operation": "Operation",
+      "status": "Status",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "allUsers": "All",
+      "allFunctions": "All",
+      "allOperations": "All",
+      "allStatuses": "All",
+      "statusNormal": "Normal",
+      "statusError": "Error",
+      "reset": "Reset"
+    },
+    "operations": {
+      "view": "View",
+      "create": "Create",
+      "read": "Read",
+      "update": "Update",
+      "delete": "Delete",
+      "print": "Print",
+      "file": "File",
+      "login": "Login"
+    },
+    "table": {
+      "id": "ID",
+      "user": "User",
+      "sessionId": "Session ID",
+      "function": "Function",
+      "dataId": "Data ID",
+      "operation": "Operation",
+      "time": "Time",
+      "status": "Status",
+      "actions": "Actions",
+      "viewDetail": "View"
+    },
+    "detail": {
+      "title": "Log Details",
+      "basicInfo": "Basic Information",
+      "dataInfo": "Data Content",
+      "lookData": "View Data",
+      "changeData": "Change Data",
+      "errorDetail": "Error Details",
+      "noData": "No data",
+      "close": "Close"
+    }
+  },
+  "systemCodes": {
+    "title": "System Codes",
+    "list": "System Code List",
+    "add": "Add System Code",
+    "edit": "Edit System Code",
+    "delete": "Delete System Code",
+    "view": "View System Code",
+    "codeEtype": "Code Type (English)",
+    "codeCtype": "Code Type (Chinese)",
+    "codeTypeCombined": "Code Type",
+    "code": "Code",
+    "codeCname": "Code Name (Chinese)",
+    "codeEname": "Code Name (English)",
+    "codeNameCombined": "Code Name",
+    "order": "Order",
+    "note1": "Note 1",
+    "note2": "Note 2",
+    "note3": "Note 3",
+    "note4": "Note 4",
+    "note5": "Note 5",
+    "searchPlaceholder": "Search by code type, code or name"
   }
 }

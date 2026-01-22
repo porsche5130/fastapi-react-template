@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { getUserLogs, UserLog, UserLogQueryParams } from '../services/userLogService';
-import { getUsers, UserDetail } from '../services/userDetailService';
+import { getUsers, UserDetail } from '../services/userService';
 import { getSysFunctions, SysFunction } from '../services/sysFunctionService';
 import { usePermission } from '../hooks/usePermission';
 import { useFunctionName } from '../hooks/useFunctionName';
@@ -13,7 +13,7 @@ import { logView, logRead } from '../utils/userLogHelper';
 import '../styles/DataTable.css';
 
 const UserLogsPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
   const pageTitle = useFunctionName('user_logs');
   const hasInitialized = useRef(false);
@@ -79,8 +79,8 @@ const UserLogsPage: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    queryParams.user_detail_id,
-    queryParams.sysfunction_id,
+    queryParams.user_id,
+    queryParams.system_function_id,
     queryParams.module_item,
     queryParams.has_error,
     queryParams.start_date,
@@ -91,6 +91,8 @@ const UserLogsPage: React.FC = () => {
     try {
       setLoading(true);
       const data = await getUserLogs(queryParams);
+      console.log('[UserLogsPage] Loaded logs:', data);
+      console.log('[UserLogsPage] Sample log data:', data[0]);
       setLogs(data);
       setCurrentPage(1); // 重置到第一頁
     } catch (error) {
@@ -189,8 +191,8 @@ const UserLogsPage: React.FC = () => {
           <div style={{ minWidth: '160px', flex: '1' }}>
             <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500' }}>{t('userLogs.filters.user')}</label>
             <select
-              value={queryParams.user_detail_id || ''}
-              onChange={(e) => setQueryParams({ ...queryParams, user_detail_id: Number(e.target.value) || undefined })}
+              value={queryParams.user_id || ''}
+              onChange={(e) => setQueryParams({ ...queryParams, user_id: Number(e.target.value) || undefined })}
               style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '13px' }}
             >
               <option value="">{t('userLogs.filters.allUsers')}</option>
@@ -206,14 +208,14 @@ const UserLogsPage: React.FC = () => {
           <div style={{ minWidth: '160px', flex: '1' }}>
             <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500' }}>{t('userLogs.filters.function')}</label>
             <select
-              value={queryParams.sysfunction_id || ''}
-              onChange={(e) => setQueryParams({ ...queryParams, sysfunction_id: Number(e.target.value) || undefined })}
+              value={queryParams.system_function_id || ''}
+              onChange={(e) => setQueryParams({ ...queryParams, system_function_id: Number(e.target.value) || undefined })}
               style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '13px' }}
             >
               <option value="">{t('userLogs.filters.allFunctions')}</option>
               {functions.map((func) => (
                 <option key={func.id} value={func.id}>
-                  {func.func_cname}
+                  {i18n.language === 'zh-TW' ? func.func_cname : func.func_ename}
                 </option>
               ))}
             </select>
@@ -321,11 +323,16 @@ const UserLogsPage: React.FC = () => {
                   currentLogs.map(log => (
                     <tr key={log.id}>
                       <td>{log.id}</td>
-                      <td>{log.user_name || `ID:${log.user_detail_id}`}</td>
+                      <td>{log.user_name || `ID:${log.user_id}`}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: '12px', color: '#6c757d' }}>
                         {log.session_id ? log.session_id.substring(0, 8) + '...' : '-'}
                       </td>
-                      <td>{log.function_name || `ID:${log.sysfunction_id}`}</td>
+                      <td>
+                        {i18n.language === 'zh-TW'
+                          ? (log.function_cname || log.function_name || `ID:${log.system_function_id}`)
+                          : (log.function_ename || log.function_name || `ID:${log.system_function_id}`)
+                        }
+                      </td>
                       <td style={{ textAlign: 'center' }}>
                         {log.data_id || '-'}
                       </td>
@@ -479,11 +486,16 @@ const UserLogsPage: React.FC = () => {
                   </div>
                   <div>
                     <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>{t('userLogs.table.user')}</div>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#212529' }}>{selectedLog.user_name || `ID:${selectedLog.user_detail_id}`}</div>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#212529' }}>{selectedLog.user_name || `ID:${selectedLog.user_id}`}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>{t('userLogs.table.function')}</div>
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#212529' }}>{selectedLog.function_name || `ID:${selectedLog.sysfunction_id}`}</div>
+                    <div style={{ fontSize: '14px', fontWeight: '500', color: '#212529' }}>
+                      {i18n.language === 'zh-TW'
+                        ? (selectedLog.function_cname || selectedLog.function_name || `ID:${selectedLog.system_function_id}`)
+                        : (selectedLog.function_ename || selectedLog.function_name || `ID:${selectedLog.system_function_id}`)
+                      }
+                    </div>
                   </div>
                   <div>
                     <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>{t('userLogs.table.sessionId')}</div>

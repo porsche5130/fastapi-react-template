@@ -8,7 +8,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
-from app.routes import auth, system, organization, sys_profile, user_role, user_detail, sysfunction, role_right, permissions, userlog
+from app.routes import (
+    auth, system, organization, sys_profile,
+    users, permissions,
+    systemcode, system_functions, system_notifications,
+    user_roles, role_rights, user_logs, home
+)
 
 # 配置日誌
 logging.basicConfig(
@@ -41,15 +46,31 @@ app.mount("/locales", StaticFiles(directory=str(settings.locales_path)), name="l
 
 # 註冊路由
 app.include_router(auth.router, prefix="/api/auth", tags=["認證"])
+app.include_router(home.router, prefix="/api/home", tags=["系統首頁"])
 app.include_router(system.router, prefix="/api/system", tags=["系統管理"])
 app.include_router(organization.router, prefix="/api/organizations", tags=["組織管理"])
-app.include_router(sys_profile.router, prefix="/api/sys_profile", tags=["系統設定"])
-app.include_router(user_role.router, prefix="/api/user_role", tags=["使用者角色管理"])
-app.include_router(user_detail.router, prefix="/api/user_detail", tags=["使用者管理"])
-app.include_router(sysfunction.router, prefix="/api/sysfunction", tags=["系統功能管理"])
-app.include_router(role_right.router, prefix="/api/role_right", tags=["角色權限管理"])
+app.include_router(sys_profile.router, prefix="/api/sys_profiles", tags=["系統設定"])
+
+# 使用者角色管理
+app.include_router(user_roles.router, prefix="/api/user_roles", tags=["使用者角色管理"])
+
+app.include_router(users.router, prefix="/api/users", tags=["使用者管理"])
+
+# 系統功能管理
+app.include_router(system_functions.router, prefix="/api/system_functions", tags=["系統功能管理"])
+
+# 系統通知管理
+app.include_router(system_notifications.router, prefix="/api/system_notifications", tags=["系統通知管理"])
+
+# 角色權限管理
+app.include_router(role_rights.router, prefix="/api/role_rights", tags=["角色權限管理"])
+
 app.include_router(permissions.router, prefix="/api/permissions", tags=["權限查詢"])
-app.include_router(userlog.router, prefix="/api/userlogs", tags=["使用者日誌"])
+
+# 使用者日誌
+app.include_router(user_logs.router, prefix="/api/user_logs", tags=["使用者日誌"])
+
+app.include_router(systemcode.router, prefix="/api/system_codes", tags=["系統代碼管理"])
 
 @app.get("/", tags=["根路徑"])
 async def root():

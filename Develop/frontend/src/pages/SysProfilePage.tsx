@@ -14,12 +14,14 @@ import {
 import { getOrganizations, Organization } from '../services/organizationService';
 import { usePermission } from '../hooks/usePermission';
 import { useFunctionName } from '../hooks/useFunctionName';
+import { useSystem } from '../contexts/SystemContext';
 import { logView, logUpdate } from '../utils/userLogHelper';
 import '../styles/DataTable.css';
 
 const SysProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
+  const { refreshSystemProfile } = useSystem();
   const pageTitle = useFunctionName('sys_profile');
   const hasInitialized = useRef(false);
   const [profile, setProfile] = useState<SysProfile | null>(null);
@@ -87,8 +89,14 @@ const SysProfilePage: React.FC = () => {
       setSaving(true);
       const updated = await updateSysProfile(formData);
       await logUpdate('sys_profile', profile as any, updated as any);
-      alert(t('message.saveSuccess'));
+
+      // 重新載入頁面資料
       loadProfile();
+
+      // 重新載入全域系統設定（立即更新 Title 和版權宣告）
+      await refreshSystemProfile();
+
+      alert(t('message.saveSuccess'));
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || t('message.saveFailed');
 

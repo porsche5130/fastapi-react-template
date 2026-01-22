@@ -21,7 +21,7 @@ import '../styles/DataTable.css';
 const UserRolesPage: React.FC = () => {
   const { t } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
-  const pageTitle = useFunctionName('user_role');
+  const pageTitle = useFunctionName('user_roles');
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,16 +56,16 @@ const UserRolesPage: React.FC = () => {
   useEffect(() => {
     // 等待權限載入完成後再檢查權限並載入資料
     // 使用 ref 確保只執行一次，避免 StrictMode 重複執行
-    if (!permissionLoading && hasPermission('user_role', 'read') && !hasInitialized.current) {
+    if (!permissionLoading && hasPermission('user_roles', 'read') && !hasInitialized.current) {
       hasInitialized.current = true;
 
       const initPage = async () => {
         try {
           await loadRoles();
-          await logView('user_role', { search: search || undefined }, null);
+          await logView('user_roles', { search: search || undefined }, null);
         } catch (err: any) {
           const errorMsg = err.response?.data?.detail || err.message || t('message.loadFailed');
-          await logView('user_role', { search: search || undefined }, errorMsg);
+          await logView('user_roles', { search: search || undefined }, errorMsg);
         }
       };
       initPage();
@@ -128,11 +128,11 @@ const UserRolesPage: React.FC = () => {
     try {
       if (editingRole) {
         const updatedRole = await updateUserRole(editingRole.id, formData);
-        await logUpdate('user_role', editingRole as any, updatedRole as any);
+        await logUpdate('user_roles', editingRole as any, updatedRole as any);
         alert(t('message.saveSuccess'));
       } else {
         const newRole = await createUserRole(formData);
-        await logCreate('user_role', newRole as any);
+        await logCreate('user_roles', newRole as any);
         alert(t('message.createSuccess'));
       }
       closeModal();
@@ -140,9 +140,9 @@ const UserRolesPage: React.FC = () => {
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || t('common.error');
       if (editingRole) {
-        await logUpdate('user_role', editingRole as any, formData, errorMsg);
+        await logUpdate('user_roles', editingRole as any, formData, errorMsg);
       } else {
-        await logCreate('user_role', formData, errorMsg);
+        await logCreate('user_roles', formData, errorMsg);
       }
       alert(errorMsg);
     }
@@ -153,12 +153,12 @@ const UserRolesPage: React.FC = () => {
 
     try {
       await deleteUserRole(role.id);
-      await logDelete('user_role', role as any);
+      await logDelete('user_roles', role as any);
       alert(t('message.deleteSuccess'));
       loadRoles();
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || t('common.error');
-      await logDelete('user_role', role as any, errorMsg);
+      await logDelete('user_roles', role as any, errorMsg);
       alert(errorMsg);
     }
   };
@@ -184,7 +184,7 @@ const UserRolesPage: React.FC = () => {
     );
   }
 
-  if (!hasPermission('user_role', 'read')) {
+  if (!hasPermission('user_roles', 'read')) {
     return (
       <div className="page-container">
         <div className="error-message">{t('common.noPermission')}</div>
@@ -192,9 +192,9 @@ const UserRolesPage: React.FC = () => {
     );
   }
 
-  const canCreate = hasPermission('user_role', 'create');
-  const canUpdate = hasPermission('user_role', 'update');
-  const canDelete = hasPermission('user_role', 'delete');
+  const canCreate = hasPermission('user_roles', 'create');
+  const canUpdate = hasPermission('user_roles', 'update');
+  const canDelete = hasPermission('user_roles', 'delete');
 
   return (
     <div className="page-container">
@@ -266,7 +266,7 @@ const UserRolesPage: React.FC = () => {
                           {t('common.edit')}
                         </button>
                       )}
-                      {!canUpdate && hasPermission('user_role', 'read') && (
+                      {!canUpdate && hasPermission('user_roles', 'read') && (
                         <button className="btn-secondary" onClick={() => openModal(role, true)}>
                           {t('common.view')}
                         </button>
@@ -374,7 +374,7 @@ const UserRolesPage: React.FC = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>
-                {isViewMode ? t('common.view') : (editingRole ? t('common.edit') : t('common.create'))}
+                {pageTitle} - {isViewMode ? t('common.viewOperation') : (editingRole ? t('common.editOperation') : t('common.createOperation'))}
               </h2>
               <button className="modal-close" onClick={closeModal}>✕</button>
             </div>

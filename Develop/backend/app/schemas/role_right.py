@@ -10,7 +10,7 @@ from datetime import datetime
 
 class RoleRightBase(BaseModel):
     """角色權限基本資料"""
-    sysfunction_id: int = Field(..., description="功能編號")
+    system_function_id: int = Field(..., description="功能編號")
     func_code: str = Field(..., max_length=20, description="功能代碼")
     is_create: bool = Field(False, description="新增權限")
     is_read: bool = Field(False, description="讀取權限")

@@ -409,7 +409,7 @@ const OrganizationsPage: React.FC = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>
-                {isViewMode ? t('common.view') : (editingOrg ? t('common.edit') : t('common.create'))}
+                {pageTitle} - {isViewMode ? t('common.viewOperation') : (editingOrg ? t('common.editOperation') : t('common.createOperation'))}
               </h2>
               <button className="modal-close" onClick={closeModal}>✕</button>
             </div>

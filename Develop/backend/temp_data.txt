@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "<string>", line 33, in <module>
+    print(',\n'.join(batch))
+    ~~~~~^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'cp950' codec can't encode character '\U0001f4e5' in position 46: illegal multibyte sequence

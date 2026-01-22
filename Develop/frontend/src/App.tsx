@@ -16,8 +16,11 @@ import SysProfilePage from './pages/SysProfilePage';
 import UserRolesPage from './pages/UserRolesPage';
 import UsersPage from './pages/UsersPage';
 import SysFunctionsPage from './pages/SysFunctionsPage';
-import RoleRightPage from './pages/RoleRightPage';
+import SystemFunctionsPage from './pages/SystemFunctionsPage';
+import RoleRightsPage from './pages/RoleRightsPage';
 import UserLogsPage from './pages/UserLogsPage';
+import SystemCodesPage from './pages/SystemCodesPage';
+import HomePage from './pages/HomePage';
 import MainLayout from './components/MainLayout';
 import PrivateRoute from './components/PrivateRoute';
 
@@ -65,19 +68,23 @@ const AppRoutes: React.FC = () => {
           </PrivateRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route index element={<Navigate to="/home" replace />} />
+        {/* 首頁（新版） */}
+        <Route path="home" element={<HomePage />} />
+        {/* 儀表板（舊版，暫時保留） */}
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="organizations" element={<OrganizationsPage />} />
         <Route path="sys_profile" element={<SysProfilePage />} />
-        <Route path="roles" element={<UserRolesPage />} />
+        <Route path="user_roles" element={<UserRolesPage />} />
         <Route path="users" element={<UsersPage />} />
+        {/* 系統功能管理 - 新版本（優先使用） */}
+        <Route path="system_functions" element={<SystemFunctionsPage />} />
+        {/* 系統功能管理 - 舊版本（暫時保留） */}
         <Route path="sysfunction" element={<SysFunctionsPage />} />
         <Route path="org_profile" element={<div>組織資料檔案</div>} />
-        <Route path="role_right" element={<RoleRightPage />} />
+        <Route path="role_rights" element={<RoleRightsPage />} />
         <Route path="user_logs" element={<UserLogsPage />} />
-        {/* 保留舊路由以便向後兼容 */}
-        <Route path="user_role" element={<Navigate to="/roles" replace />} />
-        <Route path="user_detail" element={<Navigate to="/users" replace />} />
+        <Route path="system_codes" element={<SystemCodesPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

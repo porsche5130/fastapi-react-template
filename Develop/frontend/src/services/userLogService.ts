@@ -6,8 +6,8 @@ import axios from '../api/axios';
 
 export interface UserLog {
   id: number;
-  user_detail_id: number;
-  sysfunction_id: number;
+  user_id: number;
+  system_function_id: number;
   module_item: 'View' | 'Create' | 'Read' | 'Update' | 'Delete' | 'Print' | 'File' | 'Login';
   data_id?: number;
   session_id?: string;
@@ -17,10 +17,12 @@ export interface UserLog {
   err_detail: string | null;
   user_name?: string;
   function_name?: string;
+  function_cname?: string;
+  function_ename?: string;
 }
 
 export interface UserLogCreate {
-  sysfunction_id: number;
+  system_function_id: number;
   module_item: 'View' | 'Create' | 'Read' | 'Update' | 'Delete' | 'Print' | 'File' | 'Login';
   data_id?: number;
   look_data?: Record<string, any>;
@@ -29,8 +31,8 @@ export interface UserLogCreate {
 }
 
 export interface UserLogQueryParams {
-  user_detail_id?: number;
-  sysfunction_id?: number;
+  user_id?: number;
+  system_function_id?: number;
   module_item?: string;
   data_id?: number;
   start_date?: string;
@@ -44,7 +46,7 @@ export interface UserLogQueryParams {
  * 取得使用者日誌列表
  */
 export const getUserLogs = async (params?: UserLogQueryParams): Promise<UserLog[]> => {
-  const response = await axios.get('/api/userlogs/', { params });
+  const response = await axios.get('/api/user_logs/', { params });
   return response.data;
 };
 
@@ -52,7 +54,7 @@ export const getUserLogs = async (params?: UserLogQueryParams): Promise<UserLog[
  * 取得單筆日誌
  */
 export const getUserLog = async (logId: number): Promise<UserLog> => {
-  const response = await axios.get(`/api/userlogs/${logId}`);
+  const response = await axios.get(`/api/user_logs/${logId}`);
   return response.data;
 };
 
@@ -60,7 +62,7 @@ export const getUserLog = async (logId: number): Promise<UserLog> => {
  * 取得特定使用者的日誌
  */
 export const getUserLogsByUser = async (userId: number, skip = 0, limit = 100): Promise<UserLog[]> => {
-  const response = await axios.get(`/api/userlogs/user/${userId}`, {
+  const response = await axios.get(`/api/user_logs/user/${userId}`, {
     params: { skip, limit }
   });
   return response.data;
@@ -70,7 +72,7 @@ export const getUserLogsByUser = async (userId: number, skip = 0, limit = 100): 
  * 取得特定功能的日誌
  */
 export const getUserLogsByFunction = async (functionId: number, skip = 0, limit = 100): Promise<UserLog[]> => {
-  const response = await axios.get(`/api/userlogs/function/${functionId}`, {
+  const response = await axios.get(`/api/user_logs/function/${functionId}`, {
     params: { skip, limit }
   });
   return response.data;
@@ -81,6 +83,6 @@ export const getUserLogsByFunction = async (functionId: number, skip = 0, limit 
  * 由前端主動呼叫，記錄使用者操作行為
  */
 export const createUserLog = async (log: UserLogCreate): Promise<UserLog> => {
-  const response = await axios.post('/api/userlogs/log', log);
+  const response = await axios.post('/api/user_logs/log', log);
   return response.data;
 };

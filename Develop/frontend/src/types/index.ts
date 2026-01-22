@@ -55,10 +55,11 @@ export interface SystemFunction {
   func_type: number;  // 1:節點, 2:功能
   func_order: number;
   func_icon: string | null;
-  func_module_name: string | null;
+  module_code: string | null;        // 模組代碼（正名化）
   module_item: any[];
   upper_func_id: number;
   is_mana: boolean;
+  is_active: boolean;
   children?: SystemFunction[];
 }
 

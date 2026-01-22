@@ -33,7 +33,7 @@ class Organization(Base):
     is_mana = Column(Boolean, nullable=False, default=False, index=True)
     is_active = Column(Boolean, nullable=False, default=True, index=True)
     memo = Column(String(1000))
-    edit_by = Column(Integer, ForeignKey("user_detail.id"), nullable=False)
+    edit_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(TIMESTAMP, nullable=False, server_default=func.current_timestamp())
     updated_at = Column(TIMESTAMP)
 
@@ -46,6 +46,6 @@ class Organization(Base):
     )
 
     # 關聯
-    users = relationship("UserDetail", back_populates="organization", foreign_keys="UserDetail.organization_id")
+    users = relationship("User", back_populates="organization", foreign_keys="User.organization_id")
     sys_profile = relationship("SysProfile", back_populates="organization")
-    editor = relationship("UserDetail", foreign_keys=[edit_by])
+    editor = relationship("User", foreign_keys=[edit_by])

@@ -21,7 +21,7 @@ import '../styles/DataTable.css';
 const SysFunctionsPage: React.FC = () => {
   const { t } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
-  const pageTitle = useFunctionName('sysfunction');
+  const pageTitle = useFunctionName('system_functions');
   const hasInitialized = useRef(false);
   const [functions, setFunctions] = useState<SysFunction[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +46,7 @@ const SysFunctionsPage: React.FC = () => {
     func_type: 2,
     func_order: 0,
     func_icon: '',
-    func_module_name: '',
+    module_code: '',
     module_item: [],
     description: '',
     is_mana: false,
@@ -68,15 +68,15 @@ const SysFunctionsPage: React.FC = () => {
 
   useEffect(() => {
     // 等待權限載入完成後再檢查權限並載入資料
-    if (!permissionLoading && hasPermission('sysfunction', 'read') && !hasInitialized.current) {
+    if (!permissionLoading && hasPermission('system_functions', 'read') && !hasInitialized.current) {
       hasInitialized.current = true;
       const initPage = async () => {
         try {
           await loadFunctions();
-          await logView('sysfunction', { search: search || undefined }, null);
+          await logView('system_functions', { search: search || undefined }, null);
         } catch (err: any) {
           const errorMsg = err.response?.data?.detail || err.message || t('message.loadFailed');
-          await logView('sysfunction', { search: search || undefined }, errorMsg);
+          await logView('system_functions', { search: search || undefined }, errorMsg);
         }
       };
       initPage();
@@ -170,7 +170,7 @@ const SysFunctionsPage: React.FC = () => {
         func_type: func.func_type,
         func_order: func.func_order,
         func_icon: func.func_icon || '',
-        func_module_name: func.func_module_name || '',
+        module_code: func.module_code || '',
         module_item: func.module_item || [],
         description: func.description || '',
         is_mana: func.is_mana,
@@ -186,7 +186,7 @@ const SysFunctionsPage: React.FC = () => {
       // 如果是查看模式，記錄 Read 日誌
       if (viewMode) {
         try {
-          await logRead('sysfunction', { id: func.id, func_code: func.func_code, func_cname: func.func_cname });
+          await logRead('system_functions', { id: func.id, func_code: func.func_code, func_cname: func.func_cname });
         } catch (err) {
           console.error('[SysFunctionsPage] Failed to log Read:', err);
         }
@@ -201,7 +201,7 @@ const SysFunctionsPage: React.FC = () => {
         func_type: 2,
         func_order: 0,
         func_icon: '',
-        func_module_name: '',
+        module_code: '',
         module_item: [],
         description: '',
         is_mana: false,
@@ -224,11 +224,11 @@ const SysFunctionsPage: React.FC = () => {
     const submitData = {
       ...formData,
       module_item: moduleItemActions,
-      // 如果是節點類型 (func_type=1)，func_module_name 必須是 null 或 undefined
-      // 如果是功能類型 (func_type=2)，func_module_name 不能是空字串
-      func_module_name: formData.func_type === 1
+      // 如果是節點類型 (func_type=1)，module_code 必須是 null 或 undefined
+      // 如果是功能類型 (func_type=2)，module_code 不能是空字串
+      module_code: formData.func_type === 1
         ? undefined
-        : (formData.func_module_name || undefined),
+        : (formData.module_code || undefined),
       // 空字串的欄位轉為 undefined
       func_icon: formData.func_icon || undefined,
       description: formData.description || undefined
@@ -237,11 +237,11 @@ const SysFunctionsPage: React.FC = () => {
     try {
       if (editingFunction) {
         const updatedFunc = await updateSysFunction(editingFunction.id, submitData);
-        await logUpdate('sysfunction', editingFunction as any, updatedFunc as any);
+        await logUpdate('system_functions', editingFunction as any, updatedFunc as any);
         alert(t('message.saveSuccess'));
       } else {
         const newFunc = await createSysFunction(submitData);
-        await logCreate('sysfunction', newFunc as any);
+        await logCreate('system_functions', newFunc as any);
         alert(t('message.createSuccess'));
       }
       closeModal();
@@ -251,9 +251,9 @@ const SysFunctionsPage: React.FC = () => {
 
       try {
         if (editingFunction) {
-          await logUpdate('sysfunction', editingFunction as any, submitData, errorMsg);
+          await logUpdate('system_functions', editingFunction as any, submitData, errorMsg);
         } else {
-          await logCreate('sysfunction', submitData, errorMsg);
+          await logCreate('system_functions', submitData, errorMsg);
         }
       } catch (logErr) {
         console.error('[SysFunctionsPage] Failed to log error:', logErr);
@@ -268,14 +268,14 @@ const SysFunctionsPage: React.FC = () => {
 
     try {
       await deleteSysFunction(func.id);
-      await logDelete('sysfunction', { id: func.id, func_code: func.func_code, func_cname: func.func_cname });
+      await logDelete('system_functions', { id: func.id, func_code: func.func_code, func_cname: func.func_cname });
       alert(t('message.deleteSuccess'));
       loadFunctions();
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || t('common.error');
 
       try {
-        await logDelete('sysfunction', { id: func.id, func_code: func.func_code, func_cname: func.func_cname }, errorMsg);
+        await logDelete('system_functions', { id: func.id, func_code: func.func_code, func_cname: func.func_cname }, errorMsg);
       } catch (logErr) {
         console.error('[SysFunctionsPage] Failed to log error:', logErr);
       }
@@ -293,13 +293,13 @@ const SysFunctionsPage: React.FC = () => {
       };
 
       const updatedFunc = await updateSysFunction(func.id, newData);
-      await logUpdate('sysfunction', oldData as any, updatedFunc as any);
+      await logUpdate('system_functions', oldData as any, updatedFunc as any);
       loadFunctions();
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || t('common.error');
 
       try {
-        await logUpdate('sysfunction', func as any, { ...func, is_active: !func.is_active }, errorMsg);
+        await logUpdate('system_functions', func as any, { ...func, is_active: !func.is_active }, errorMsg);
       } catch (logErr) {
         console.error('[SysFunctionsPage] Failed to log error:', logErr);
       }
@@ -327,7 +327,7 @@ const SysFunctionsPage: React.FC = () => {
     );
   }
 
-  if (!hasPermission('sysfunction', 'read')) {
+  if (!hasPermission('system_functions', 'read')) {
     return (
       <div className="page-container">
         <div className="error-message">{t('common.noPermission')}</div>
@@ -335,9 +335,9 @@ const SysFunctionsPage: React.FC = () => {
     );
   }
 
-  const canCreate = hasPermission('sysfunction', 'create');
-  const canUpdate = hasPermission('sysfunction', 'update');
-  const canDelete = hasPermission('sysfunction', 'delete');
+  const canCreate = hasPermission('system_functions', 'create');
+  const canUpdate = hasPermission('system_functions', 'update');
+  const canDelete = hasPermission('system_functions', 'delete');
 
   return (
     <div className="page-container">
@@ -470,7 +470,7 @@ const SysFunctionsPage: React.FC = () => {
                           {t('common.edit')}
                         </button>
                       )}
-                      {!canUpdate && hasPermission('sysfunction', 'read') && (
+                      {!canUpdate && hasPermission('system_functions', 'read') && (
                         <button className="btn-secondary" onClick={() => openModal(func, true)}>
                           {t('common.view')}
                         </button>
@@ -578,7 +578,7 @@ const SysFunctionsPage: React.FC = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>
-                {isViewMode ? t('common.view') : (editingFunction ? t('common.edit') : t('common.create'))}
+                {pageTitle} - {isViewMode ? t('common.viewOperation') : (editingFunction ? t('common.editOperation') : t('common.createOperation'))}
               </h2>
               <button className="modal-close" onClick={closeModal}>✕</button>
             </div>
@@ -662,8 +662,8 @@ const SysFunctionsPage: React.FC = () => {
                   <label>{t('sysFunctions.funcModuleName')} {formData.func_type === 2 ? '*' : ''}</label>
                   <input
                     type="text"
-                    value={formData.func_module_name}
-                    onChange={(e) => setFormData({ ...formData, func_module_name: e.target.value })}
+                    value={formData.module_code}
+                    onChange={(e) => setFormData({ ...formData, module_code: e.target.value })}
                     placeholder={formData.func_type === 2 ? t('sysFunctions.funcModuleNamePlaceholder') : t('sysFunctions.funcModuleNameDisabled')}
                     disabled={isViewMode || formData.func_type === 1}
                     required={formData.func_type === 2}

@@ -20,8 +20,11 @@ const loadFunctionMap = async (): Promise<Map<string, number>> => {
     const functions = await getSysFunctions({});
     functionCodeToIdMap = new Map();
     functions.forEach((func: any) => {
-      functionCodeToIdMap!.set(func.func_code, func.id);
+      // 確保 id 是數字類型
+      const functionId = typeof func.id === 'string' ? parseInt(func.id, 10) : func.id;
+      functionCodeToIdMap!.set(func.func_code, functionId);
     });
+    console.log('[UserLogHelper] Function map loaded:', Array.from(functionCodeToIdMap.entries()));
     return functionCodeToIdMap;
   } catch (error) {
     console.error('[UserLogHelper] Failed to load function map:', error);
@@ -55,6 +58,7 @@ export const logUserAction = async (
   console.log(`[UserLogHelper] logUserAction called: ${funcCode} - ${moduleItem}`);
   try {
     const functionId = await getFunctionId(funcCode);
+    console.log(`[UserLogHelper] getFunctionId result for "${funcCode}": ${functionId} (type: ${typeof functionId})`);
     if (!functionId) {
       console.warn(`[UserLogHelper] Function code not found: ${funcCode}`);
       return;
@@ -75,8 +79,16 @@ export const logUserAction = async (
       extracted_dataId: dataId
     });
 
+    // 確保 functionId 是數字類型
+    const numericFunctionId = typeof functionId === 'string' ? parseInt(functionId, 10) : functionId;
+
+    if (isNaN(numericFunctionId)) {
+      console.error(`[UserLogHelper] Invalid functionId: ${functionId} (type: ${typeof functionId})`);
+      return;
+    }
+
     const log: UserLogCreate = {
-      sysfunction_id: functionId,
+      system_function_id: numericFunctionId,
       module_item: moduleItem,
       data_id: dataId,
       look_data: lookData,

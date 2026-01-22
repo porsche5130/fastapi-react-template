@@ -12,7 +12,7 @@ from app.core.database import Base
 class SysProfile(Base):
     """系統設定檔 (唯一一筆)"""
 
-    __tablename__ = "sys_profile"
+    __tablename__ = "sys_profiles"
 
     # 主鍵 (固定為 1)
     id = Column(Integer, primary_key=True, default=1)
@@ -32,7 +32,7 @@ class SysProfile(Base):
     sys_mana_email = Column(String(200), nullable=False)
 
     # 系統欄位
-    edit_by = Column(Integer, ForeignKey("user_detail.id"), nullable=False)
+    edit_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(TIMESTAMP, nullable=False, server_default=func.current_timestamp())
     updated_at = Column(TIMESTAMP)
 
@@ -43,4 +43,4 @@ class SysProfile(Base):
 
     # 關聯
     organization = relationship("Organization", back_populates="sys_profile")
-    editor = relationship("UserDetail", foreign_keys=[edit_by])
+    editor = relationship("User", foreign_keys=[edit_by])

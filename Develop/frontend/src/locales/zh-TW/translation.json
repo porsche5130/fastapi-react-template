@@ -32,7 +32,15 @@
     "noPermission": "您沒有權限存取此功能",
     "noCreatePermission": "您沒有新增權限",
     "noUpdatePermission": "您沒有修改權限",
-    "noDeletePermission": "您沒有刪除權限"
+    "noDeletePermission": "您沒有刪除權限",
+    "showing": "顯示",
+    "of": "共",
+    "page": "頁",
+    "all": "全部",
+    "isActive": "啟用狀態",
+    "createOperation": "新增作業",
+    "editOperation": "編輯作業",
+    "viewOperation": "檢視作業"
   },
   "auth": {
     "login": "使用者登入",
@@ -58,6 +66,22 @@
     "apology": "造成不便，敬請見諒",
     "apologyEn": "We apologize for any inconvenience",
     "contact": "如有疑問，請聯繫系統管理員"
+  },
+  "home": {
+    "welcome": "歡迎使用 PA6.4 管理系統",
+    "greeting": "您好",
+    "organizationInfo": "您目前所屬組織",
+    "roleInfo": "您的角色",
+    "stats": {
+      "projects": "專案總數",
+      "active": "進行中",
+      "pending": "待處理",
+      "completed": "已完成"
+    },
+    "recentActivities": "最近活動",
+    "noActivities": "目前沒有最近活動記錄",
+    "quickLinks": "快速連結",
+    "noQuickLinks": "快速連結功能開發中..."
   },
   "dashboard": {
     "title": "歡迎使用 PA6.4 管理系統",
@@ -168,6 +192,8 @@
     "funcType": "功能類型",
     "funcOrder": "排序順序",
     "funcIcon": "圖示",
+    "upperFuncId": "上層功能",
+    "moduleCode": "模組代碼",
     "funcModuleName": "模組名稱",
     "funcModuleNamePlaceholder": "例如: users, settings, dashboard",
     "funcModuleNameDisabled": "節點類型無需填寫",
@@ -176,6 +202,8 @@
     "parent": "上層功能",
     "root": "根節點",
     "isMana": "管理功能",
+    "showOnlyMana": "僅顯示管理功能",
+    "allTypes": "全部類型",
     "searchPlaceholder": "搜尋功能代碼或名稱",
     "permissionHint": "勾選此功能允許設定的操作權限",
     "permissionDisabledHint": "節點類型無需設定操作權限",
@@ -184,6 +212,30 @@
       "function": "功能"
     },
     "permissions": {
+      "create": "新增",
+      "read": "檢視",
+      "update": "修改",
+      "delete": "刪除",
+      "print": "列印",
+      "file": "檔案"
+    },
+    "action": {
+      "Create": "新增",
+      "Read": "檢視",
+      "Update": "修改",
+      "Delete": "刪除",
+      "Print": "列印",
+      "File": "檔案",
+      "create": "新增",
+      "read": "檢視",
+      "update": "修改",
+      "delete": "刪除",
+      "print": "列印",
+      "file": "檔案"
+    }
+  },
+  "sysfunction": {
+    "action": {
       "create": "新增",
       "read": "檢視",
       "update": "修改",
@@ -217,6 +269,8 @@
     "failed": "操作失敗",
     "createSuccess": "新增成功",
     "createFailed": "新增失敗",
+    "updateSuccess": "修改成功",
+    "updateFailed": "修改失敗",
     "saveSuccess": "儲存成功",
     "saveFailed": "儲存失敗",
     "deleteSuccess": "刪除成功",
@@ -224,6 +278,7 @@
     "deleteConfirm": "確定要刪除嗎？",
     "loadFailed": "載入失敗",
     "noData": "無資料",
+    "noPermission": "您沒有權限",
     "networkError": "網路錯誤，請稍後再試",
     "saving": "儲存中..."
   },
@@ -290,5 +345,27 @@
       "noData": "無資料",
       "close": "關閉"
     }
+  },
+  "systemCodes": {
+    "title": "系統代碼設定",
+    "list": "系統代碼列表",
+    "add": "新增系統代碼",
+    "edit": "編輯系統代碼",
+    "delete": "刪除系統代碼",
+    "view": "檢視系統代碼",
+    "codeEtype": "代碼類別英文名稱",
+    "codeCtype": "代碼類別中文名稱",
+    "codeTypeCombined": "代碼類別",
+    "code": "代碼編號",
+    "codeCname": "代碼中文名稱",
+    "codeEname": "代碼英文名稱",
+    "codeNameCombined": "代碼名稱",
+    "order": "次序",
+    "note1": "說明1",
+    "note2": "說明2",
+    "note3": "說明3",
+    "note4": "說明4",
+    "note5": "說明5",
+    "searchPlaceholder": "搜尋代碼類別、代碼編號或名稱"
   }
 }

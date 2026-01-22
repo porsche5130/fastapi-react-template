@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-from app.models.userlog import UserLog
-from app.models.sysfunction import SysFunction
+from app.models.user_logs import UserLog
+from app.models.system_functions import SystemFunction
 from app.core.deps import session_id_ctx
 
 logger = logging.getLogger(__name__)
@@ -22,11 +22,11 @@ class UserLogService:
     def is_logging_enabled(db: Session) -> bool:
         """
         檢查是否啟用日誌記錄
-        當 sysfunction 表中 func_code='user_logs' 且 is_active=true 時啟用
+        當 system_functions 表中 func_code='user_logs' 且 is_active=true 時啟用
         """
-        user_logs_func = db.query(SysFunction).filter(
-            SysFunction.func_code == 'user_logs',
-            SysFunction.is_active == True
+        user_logs_func = db.query(SystemFunction).filter(
+            SystemFunction.func_code == 'user_logs',
+            SystemFunction.is_active == True
         ).first()
         return user_logs_func is not None
 
@@ -63,8 +63,8 @@ class UserLogService:
         logger.info(f"UserLogService: session_id from context = {session_id}")
 
         log = UserLog(
-            user_detail_id=user_id,
-            sysfunction_id=function_id,
+            user_id=user_id,
+            system_function_id=function_id,
             module_item=module_item,
             session_id=session_id,
             look_data=look_data or {},
@@ -73,8 +73,13 @@ class UserLogService:
             err_detail=err_detail
         )
         db.add(log)
-        db.commit()
-        db.refresh(log)
+        try:
+            db.commit()
+            db.refresh(log)
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to commit user log: {e}")
+            # 日誌記錄失敗不應該影響主要功能，所以只記錄錯誤
         return log
 
     @staticmethod
@@ -304,7 +309,7 @@ class UserLogService:
         根據 func_code 取得功能 ID
         用於快速查找功能ID以記錄日誌
         """
-        func = db.query(SysFunction).filter(
-            SysFunction.func_code == func_code
+        func = db.query(SystemFunction).filter(
+            SystemFunction.func_code == func_code
         ).first()
         return func.id if func else None

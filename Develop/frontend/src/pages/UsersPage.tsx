@@ -12,7 +12,7 @@ import {
   createUser,
   updateUser,
   deleteUser
-} from '../services/userDetailService';
+} from '../services/userService';
 import { getOrganizations, Organization } from '../services/organizationService';
 import { getUserRoles, UserRole } from '../services/userRoleService';
 import { getSysProfile } from '../services/sysProfileService';
@@ -22,9 +22,9 @@ import { logView, logCreate, logUpdate, logDelete } from '../utils/userLogHelper
 import '../styles/DataTable.css';
 
 const UsersPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
-  const pageTitle = useFunctionName('user_detail');
+  const pageTitle = useFunctionName('users');
   const [users, setUsers] = useState<UserDetail[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
@@ -92,7 +92,7 @@ const UsersPage: React.FC = () => {
 
   useEffect(() => {
     // 等待權限載入完成後再檢查權限並載入資料
-    if (!permissionLoading && hasPermission('user_detail', 'read') && !hasInitialized.current) {
+    if (!permissionLoading && hasPermission('users', 'read') && !hasInitialized.current) {
       hasInitialized.current = true;
 
       const initPage = async () => {
@@ -102,11 +102,11 @@ const UsersPage: React.FC = () => {
           await loadRoles();
           await loadSysProfile();
           // 記錄功能開啟成功
-          await logView('user_detail', { search: search || undefined }, null);
+          await logView('users', { search: search || undefined }, null);
         } catch (err: any) {
           const errorMsg = err.response?.data?.detail || err.message || t('message.loadFailed');
           // 記錄功能開啟失敗
-          await logView('user_detail', { search: search || undefined }, errorMsg);
+          await logView('users', { search: search || undefined }, errorMsg);
         }
       };
       initPage();
@@ -209,13 +209,13 @@ const UsersPage: React.FC = () => {
         // 修改使用者
         const updatedUser = await updateUser(editingUser.id, updateData);
         // 記錄成功的更新操作 - 使用舊資料和新回傳的完整資料
-        await logUpdate('user_detail', editingUser as any, updatedUser as any);
+        await logUpdate('users', editingUser as any, updatedUser as any);
         alert(t('message.saveSuccess'));
       } else {
         // 新增使用者
         const newUser = await createUser(formData);
         // 記錄成功的新增操作 - 使用後端回傳的完整資料
-        await logCreate('user_detail', newUser as any);
+        await logCreate('users', newUser as any);
         alert(t('message.createSuccess'));
       }
       closeModal();
@@ -224,9 +224,9 @@ const UsersPage: React.FC = () => {
       // 記錄失敗的操作
       const errorMsg = err.response?.data?.detail || t('common.error');
       if (editingUser) {
-        await logUpdate('user_detail', editingUser as any, formData, errorMsg);
+        await logUpdate('users', editingUser as any, formData, errorMsg);
       } else {
-        await logCreate('user_detail', formData, errorMsg);
+        await logCreate('users', formData, errorMsg);
       }
       alert(errorMsg);
     }
@@ -238,13 +238,13 @@ const UsersPage: React.FC = () => {
     try {
       await deleteUser(user.id);
       // 記錄成功的刪除操作
-      await logDelete('user_detail', user as any);
+      await logDelete('users', user as any);
       alert(t('message.deleteSuccess'));
       loadUsers();
     } catch (err: any) {
       // 記錄失敗的刪除操作
       const errorMsg = err.response?.data?.detail || t('common.error');
-      await logDelete('user_detail', user as any, errorMsg);
+      await logDelete('users', user as any, errorMsg);
       alert(errorMsg);
     }
   };
@@ -256,12 +256,12 @@ const UsersPage: React.FC = () => {
         is_active: !user.is_active
       });
       // 記錄成功的狀態切換操作
-      await logUpdate('user_detail', user as any, updatedUser as any);
+      await logUpdate('users', user as any, updatedUser as any);
       loadUsers();
     } catch (err: any) {
       // 記錄失敗的狀態切換操作
       const errorMsg = err.response?.data?.detail || t('common.error');
-      await logUpdate('user_detail', user as any, { ...user, is_active: !user.is_active }, errorMsg);
+      await logUpdate('users', user as any, { ...user, is_active: !user.is_active }, errorMsg);
       alert(errorMsg);
     }
   };
@@ -275,7 +275,7 @@ const UsersPage: React.FC = () => {
     if (!roleIds || roleIds.length === 0) return null;
     return roleIds.map(id => {
       const role = roles.find(r => r.id === id);
-      return role ? role.role_cname : id.toString();
+      return role ? (i18n.language === 'zh-TW' ? role.role_cname : role.role_ename) : id.toString();
     });
   };
 
@@ -305,7 +305,7 @@ const UsersPage: React.FC = () => {
     );
   }
 
-  if (!hasPermission('user_detail', 'read')) {
+  if (!hasPermission('users', 'read')) {
     return (
       <div className="page-container">
         <div className="error-message">{t('common.noPermission')}</div>
@@ -313,9 +313,9 @@ const UsersPage: React.FC = () => {
     );
   }
 
-  const canCreate = hasPermission('user_detail', 'create');
-  const canUpdate = hasPermission('user_detail', 'update');
-  const canDelete = hasPermission('user_detail', 'delete');
+  const canCreate = hasPermission('users', 'create');
+  const canUpdate = hasPermission('users', 'update');
+  const canDelete = hasPermission('users', 'delete');
 
   return (
     <div className="page-container">
@@ -399,7 +399,7 @@ const UsersPage: React.FC = () => {
                           {t('common.edit')}
                         </button>
                       )}
-                      {!canUpdate && hasPermission('user_detail', 'read') && (
+                      {!canUpdate && hasPermission('users', 'read') && (
                         <button className="btn-secondary" onClick={() => openModal(user, true)}>
                           {t('common.view')}
                         </button>
@@ -507,7 +507,7 @@ const UsersPage: React.FC = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>
-                {isViewMode ? t('common.view') : (editingUser ? t('common.edit') : t('common.create'))}
+                {pageTitle} - {isViewMode ? t('common.viewOperation') : (editingUser ? t('common.editOperation') : t('common.createOperation'))}
               </h2>
               <button className="modal-close" onClick={closeModal}>✕</button>
             </div>
@@ -603,7 +603,7 @@ const UsersPage: React.FC = () => {
                             style={{ marginRight: '5px' }}
                             disabled={isViewMode}
                           />
-                          {role.role_cname}
+                          {i18n.language === 'zh-TW' ? role.role_cname : role.role_ename}
                         </label>
                       );
                     })}

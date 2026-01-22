@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.role_right import RoleRight
-from app.models.user_detail import UserDetail
+from app.models.role_rights import RoleRight
+from app.models.user import User
 from app.services.userlog_service import UserLogService
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ router = APIRouter()
 @router.get("/me", summary="取得當前使用者的所有權限")
 async def get_my_permissions(
     db: Session = Depends(get_db),
-    current_user: UserDetail = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ) -> Dict[str, Dict[str, bool]]:
     """
     取得當前使用者的所有功能權限

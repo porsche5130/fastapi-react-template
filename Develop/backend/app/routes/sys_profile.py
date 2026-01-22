@@ -12,7 +12,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.permissions import check_permission
 from app.models.sys_profile import SysProfile
-from app.models.user_detail import UserDetail
+from app.models.user import User
 from app.schemas.sys_profile import SysProfileResponse, SysProfileUpdate
 from app.services.userlog_service import UserLogService
 
@@ -41,19 +41,15 @@ def sys_profile_to_dict(profile: SysProfile) -> dict:
 @router.get("/", response_model=SysProfileResponse, summary="取得系統設定")
 async def get_sys_profile(
     db: Session = Depends(get_db),
-    current_user: UserDetail = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     取得系統設定（id=1）
 
-    需要提供 Bearer Token 及 sys_profile 讀取權限
+    需要提供 Bearer Token（所有已登入使用者都可讀取）
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "sys_profile", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取系統設定"
-        )
+    # 系統基本資料不需要權限檢查,所有登入使用者都可以讀取
+    logger.info(f"使用者 {current_user.id} 正在讀取系統設定")
 
     profile = db.query(SysProfile).filter(SysProfile.id == 1).first()
 
@@ -70,7 +66,7 @@ async def get_sys_profile(
 async def update_sys_profile(
     profile_data: SysProfileUpdate,
     db: Session = Depends(get_db),
-    current_user: UserDetail = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     更新系統設定（id=1）

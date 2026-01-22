@@ -1,6 +1,6 @@
 /**
  * 側邊欄選單元件
- * 顯示系統功能選單（從 sysfunction 資料表）
+ * 顯示系統功能選單（從 system_functions 資料表）
  */
 
 import React, { useState, useEffect } from 'react';
@@ -94,7 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
   // 遞迴渲染懸浮選單的多層次項目
   const renderPopupSubmenu = (items: SystemFunction[], level: number): React.ReactNode => {
     return items.map((child) => {
-      const childPath = child.func_module_name ? `/${child.func_module_name}` : '#';
+      const childPath = child.func_code ? `/${child.func_code}` : '#';
       const childName = i18n.language === 'en' ? child.func_ename : child.func_cname;
       const hasGrandChildren = child.children && child.children.length > 0;
       const isPopupExpanded = popupExpandedItems.has(child.id);
@@ -135,7 +135,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggle }) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.id);
     const isHovered = hoveredItem === item.id;
-    const mainPath = item.func_module_name ? `/${item.func_module_name}` : '#';
+    const mainPath = item.func_code ? `/${item.func_code}` : '#';
 
     // 根據當前語言選擇顯示文字
     const displayName = i18n.language === 'en' ? item.func_ename : item.func_cname;

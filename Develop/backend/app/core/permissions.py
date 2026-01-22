@@ -7,13 +7,13 @@ from typing import List
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.role_right import RoleRight
-from app.models.user_detail import UserDetail
+from app.models.role_rights import RoleRight
+from app.models.user import User
 
 
 def check_permission(
     db: Session,
-    user: UserDetail,
+    user: User,
     func_code: str,
     permission_type: str
 ) -> bool:
@@ -71,7 +71,7 @@ def require_permission(func_code: str, permission_type: str):
     def decorator(func):
         async def wrapper(*args, **kwargs):
             db: Session = kwargs.get('db')
-            current_user: UserDetail = kwargs.get('current_user')
+            current_user: User = kwargs.get('current_user')
 
             if not db or not current_user:
                 raise HTTPException(

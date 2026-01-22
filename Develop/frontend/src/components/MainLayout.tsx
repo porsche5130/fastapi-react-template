@@ -17,7 +17,7 @@ const MainLayout: React.FC = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
-  const { systemProfile } = useSystem();
+  const { systemProfile, getCopyright } = useSystem();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const handleLogout = async () => {
@@ -80,9 +80,9 @@ const MainLayout: React.FC = () => {
         <footer className="bottom-footer">
           <div className="footer-content">
             <p className="copyright-text">
-              {i18n.language === 'en'
-                ? (systemProfile?.sys_ecopyright || 'Copyright © 2026 JiangYun Co., Ltd.')
-                : (systemProfile?.sys_ccopyright || 'Copyright © 2026 匠耘有限公司')}
+              {getCopyright() || (i18n.language === 'en'
+                ? 'Copyright © 2026 JiangYun Co., Ltd.'
+                : 'Copyright © 2026 匠耘有限公司')}
             </p>
           </div>
         </footer>

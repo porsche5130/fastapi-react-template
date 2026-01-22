@@ -69,7 +69,13 @@
       "Bash(cmd /c \"taskkill /F /IM python.exe\")",
       "Bash(cmd /c \"taskkill /F /PID 67020 /PID 77424\")",
       "Bash(PGPASSWORD=dev123 psql:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(test:*)",
+      "Bash(tee:*)",
+      "Bash(ren:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(exit 0)"
     ]
   }
 }

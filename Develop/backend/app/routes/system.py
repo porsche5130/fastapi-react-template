@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.user_detail import UserDetail
+from app.models.user import User
 from app.models.sys_profile import SysProfile
-from app.models.sysfunction import SysFunction
-from app.models.role_right import RoleRight
+from app.models.system_functions import SystemFunction
+from app.models.role_rights import RoleRight
 from app.services.userlog_service import UserLogService
 
 logger = logging.getLogger(__name__)
@@ -85,7 +85,7 @@ async def system_check(db: Session = Depends(get_db)):
 @router.get("/functions", summary="取得系統功能選單")
 async def get_system_functions(
     db: Session = Depends(get_db),
-    current_user: UserDetail = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     取得系統功能選單（依照 func_order 排序，並根據使用者權限過濾）
@@ -98,9 +98,9 @@ async def get_system_functions(
     - 節點下若無任何可用功能，則不顯示該節點
     """
     # 查詢所有啟用的功能，按 func_order 排序
-    functions = db.query(SysFunction).filter(
-        SysFunction.is_active == True
-    ).order_by(SysFunction.func_order).all()
+    functions = db.query(SystemFunction).filter(
+        SystemFunction.is_active == True
+    ).order_by(SystemFunction.func_order).all()
 
     # 取得使用者的所有角色ID
     user_role_ids = current_user.user_role if isinstance(current_user.user_role, list) else []
@@ -112,7 +112,7 @@ async def get_system_functions(
     ).all()
 
     # 建立有權限的功能ID集合
-    authorized_func_ids = set(right.sysfunction_id for right in user_rights)
+    authorized_func_ids = set(right.system_function_id for right in user_rights)
 
     # 建立功能字典和樹狀結構
     func_dict = {}
@@ -129,7 +129,7 @@ async def get_system_functions(
                 "func_type": func.func_type,
                 "func_order": func.func_order,
                 "func_icon": func.func_icon,
-                "func_module_name": func.func_module_name,
+                "module_code": func.module_code,
                 "module_item": func.module_item,
                 "upper_func_id": func.upper_func_id,
                 "is_mana": func.is_mana,

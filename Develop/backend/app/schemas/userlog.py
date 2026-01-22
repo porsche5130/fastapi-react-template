@@ -10,8 +10,8 @@ from datetime import datetime
 
 class UserLogBase(BaseModel):
     """UserLog 基礎 Schema"""
-    user_detail_id: int = Field(..., description="作業人員ID")
-    sysfunction_id: int = Field(..., description="作業功能ID")
+    user_id: int = Field(..., description="作業人員ID")
+    system_function_id: int = Field(..., description="作業功能ID")
     module_item: str = Field(..., description="模組項目：Create, Read, Update, Delete, Print, File")
     data_id: Optional[int] = Field(None, description="資料序號（處理的資料 id）")
     session_id: Optional[str] = Field(None, max_length=36, description="登入Session識別碼")
@@ -21,13 +21,13 @@ class UserLogBase(BaseModel):
 
 
 class UserLogCreate(UserLogBase):
-    """建立 UserLog 的 Schema（系統內部使用，包含 user_detail_id）"""
+    """建立 UserLog 的 Schema（系統內部使用，包含 user_id）"""
     pass
 
 
 class UserLogCreateByFrontend(BaseModel):
-    """前端建立 UserLog 的 Schema（不需要 user_detail_id，由後端自動填入）"""
-    sysfunction_id: int = Field(..., description="作業功能ID")
+    """前端建立 UserLog 的 Schema（不需要 user_id，由後端自動填入）"""
+    system_function_id: int = Field(..., description="作業功能ID")
     module_item: str = Field(..., description="模組項目：View, Read, Create, Update, Delete, Print, File, Login")
     data_id: Optional[int] = Field(None, description="資料序號（處理的資料 id）")
     look_data: Optional[Dict[str, Any]] = Field(None, description="檢視資料（JSON）")
@@ -48,8 +48,8 @@ class UserLogResponse(UserLogBase):
 
 class UserLogQuery(BaseModel):
     """UserLog 查詢參數"""
-    user_detail_id: Optional[int] = Field(None, description="作業人員ID")
-    sysfunction_id: Optional[int] = Field(None, description="作業功能ID")
+    user_id: Optional[int] = Field(None, description="作業人員ID")
+    system_function_id: Optional[int] = Field(None, description="作業功能ID")
     module_item: Optional[str] = Field(None, description="模組項目")
     data_id: Optional[int] = Field(None, description="資料序號")
     start_date: Optional[datetime] = Field(None, description="開始日期時間")

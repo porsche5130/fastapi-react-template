@@ -31,17 +31,17 @@ export interface SysProfileUpdate {
 }
 
 /**
- * 取得系統設定
+ * 取得系統設定（後端會自動查詢 id=1）
  */
 export const getSysProfile = async (): Promise<SysProfile> => {
-  const response = await api.get<SysProfile>('/sys_profile/');
+  const response = await api.get<SysProfile>('/sys_profiles/');
   return response.data;
 };
 
 /**
- * 更新系統設定
+ * 更新系統設定（後端會自動更新 id=1）
  */
 export const updateSysProfile = async (data: SysProfileUpdate): Promise<SysProfile> => {
-  const response = await api.put<SysProfile>('/sys_profile/', data);
+  const response = await api.put<SysProfile>('/sys_profiles/', data);
   return response.data;
 };

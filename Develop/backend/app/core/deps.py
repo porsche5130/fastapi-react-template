@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
-from app.models.user_detail import UserDetail
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ security = HTTPBearer()
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
-) -> UserDetail:
+) -> User:
     """
     取得當前登入使用者
 
@@ -36,7 +36,7 @@ def get_current_user(
         db: 資料庫 Session
 
     Returns:
-        UserDetail: 使用者物件
+        User: 使用者物件
 
     Raises:
         HTTPException: 401 未授權
@@ -75,7 +75,7 @@ def get_current_user(
         raise credentials_exception
 
     # 從資料庫查詢使用者
-    user = db.query(UserDetail).filter(UserDetail.id == user_id).first()
+    user = db.query(User).filter(User.id == user_id).first()
 
     if user is None:
         raise credentials_exception
@@ -94,8 +94,8 @@ def get_current_user(
 
 
 def get_current_active_user(
-    current_user: UserDetail = Depends(get_current_user)
-) -> UserDetail:
+    current_user: User = Depends(get_current_user)
+) -> User:
     """
     取得當前啟用的使用者（已在 get_current_user 驗證）
 
@@ -103,6 +103,6 @@ def get_current_active_user(
         current_user: 當前使用者
 
     Returns:
-        UserDetail: 使用者物件
+        User: 使用者物件
     """
     return current_user

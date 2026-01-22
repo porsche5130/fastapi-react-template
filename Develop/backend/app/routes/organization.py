@@ -13,7 +13,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.permissions import check_permission
 from app.models.organization import Organization
-from app.models.user_detail import UserDetail
+from app.models.user import User
 from app.schemas.organization import OrganizationResponse, OrganizationCreate, OrganizationUpdate
 from app.services.userlog_service import UserLogService
 
@@ -49,7 +49,7 @@ async def get_organizations(
     is_active: Optional[bool] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: UserDetail = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     取得組織單位列表
@@ -88,7 +88,7 @@ async def get_organizations(
 async def get_organization(
     organization_id: int,
     db: Session = Depends(get_db),
-    current_user: UserDetail = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     取得組織單位資訊
@@ -119,7 +119,7 @@ async def get_organization(
 async def create_organization(
     organization_data: OrganizationCreate,
     db: Session = Depends(get_db),
-    current_user: UserDetail = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     建立組織單位
@@ -159,7 +159,7 @@ async def update_organization(
     organization_id: int,
     organization_data: OrganizationUpdate,
     db: Session = Depends(get_db),
-    current_user: UserDetail = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     更新組織單位
@@ -213,7 +213,7 @@ async def update_organization(
 async def delete_organization(
     organization_id: int,
     db: Session = Depends(get_db),
-    current_user: UserDetail = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
     """
     刪除組織單位（軟刪除，設定 is_active = False）
@@ -238,8 +238,8 @@ async def delete_organization(
         )
 
     # 檢查是否有使用者使用此組織（包含已停用的）
-    users_count = db.query(UserDetail).filter(
-        UserDetail.organization_id == organization_id
+    users_count = db.query(User).filter(
+        User.organization_id == organization_id
     ).count()
 
     if users_count > 0:

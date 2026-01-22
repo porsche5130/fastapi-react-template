@@ -1,0 +1,21 @@
+-- Table definition:
+CREATE TABLE system_functions (
+    id INTEGER NOT NULL DEFAULT nextval('system_functions_id_seq'::regclass),
+    func_code VARCHAR(200) NOT NULL,
+    upper_func_id INTEGER NOT NULL DEFAULT 0,
+    func_cname VARCHAR(200) NOT NULL,
+    func_ename VARCHAR(200) NOT NULL,
+    func_type INTEGER NOT NULL,
+    func_order INTEGER NOT NULL,
+    func_icon VARCHAR(200),
+    module_code VARCHAR(200),
+    module_item JSONB NOT NULL DEFAULT '[]'::jsonb,
+    description TEXT,
+    is_mana BOOLEAN NOT NULL DEFAULT false,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    edit_by INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+-- Data count: 22
