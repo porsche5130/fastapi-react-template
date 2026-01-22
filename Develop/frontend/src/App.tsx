@@ -15,7 +15,6 @@ import OrganizationsPage from './pages/OrganizationsPage';
 import SysProfilePage from './pages/SysProfilePage';
 import UserRolesPage from './pages/UserRolesPage';
 import UsersPage from './pages/UsersPage';
-import SysFunctionsPage from './pages/SysFunctionsPage';
 import SystemFunctionsPage from './pages/SystemFunctionsPage';
 import RoleRightsPage from './pages/RoleRightsPage';
 import UserLogsPage from './pages/UserLogsPage';
@@ -77,10 +76,8 @@ const AppRoutes: React.FC = () => {
         <Route path="sys_profile" element={<SysProfilePage />} />
         <Route path="user_roles" element={<UserRolesPage />} />
         <Route path="users" element={<UsersPage />} />
-        {/* 系統功能管理 - 新版本（優先使用） */}
+        {/* 系統功能管理 */}
         <Route path="system_functions" element={<SystemFunctionsPage />} />
-        {/* 系統功能管理 - 舊版本（暫時保留） */}
-        <Route path="sysfunction" element={<SysFunctionsPage />} />
         <Route path="org_profile" element={<div>組織資料檔案</div>} />
         <Route path="role_rights" element={<RoleRightsPage />} />
         <Route path="user_logs" element={<UserLogsPage />} />

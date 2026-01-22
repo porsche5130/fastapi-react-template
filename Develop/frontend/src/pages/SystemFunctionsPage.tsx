@@ -621,7 +621,7 @@ const SystemFunctionsPage: React.FC = () => {
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                     <label>{t('sysFunctions.moduleItem')}</label>
                     <div className="checkbox-group">
-                      {['create', 'read', 'update', 'delete', 'print', 'file'].map(action => (
+                      {['Create', 'Read', 'Update', 'Delete', 'Print', 'File'].map(action => (
                         <label key={action}>
                           <input
                             type="checkbox"
@@ -629,7 +629,7 @@ const SystemFunctionsPage: React.FC = () => {
                             onChange={() => toggleModuleItem(action)}
                             disabled={isViewMode}
                           />
-                          {t(`sysfunction.action.${action}`)}
+                          {t(`sysfunction.action.${action.toLowerCase()}`)}
                         </label>
                       ))}
                     </div>
