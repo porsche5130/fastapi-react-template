@@ -91,8 +91,6 @@ const UserLogsPage: React.FC = () => {
     try {
       setLoading(true);
       const data = await getUserLogs(queryParams);
-      console.log('[UserLogsPage] Loaded logs:', data);
-      console.log('[UserLogsPage] Sample log data:', data[0]);
       setLogs(data);
       setCurrentPage(1); // 重置到第一頁
     } catch (error) {
