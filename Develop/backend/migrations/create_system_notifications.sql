@@ -1,78 +1,111 @@
--- 建立系統通知資料表
--- system_notifications: 系統通知主表
+-- 建立系統通知明細檔
+-- Migration: create_system_notifications
+-- Date: 2026-01-23
+-- Version: 2.0 - 根據新規格重新設計
 
-CREATE TABLE IF NOT EXISTS system_notifications (
+-- 1. 刪除舊的資料表（如果存在）
+DROP TABLE IF EXISTS notification_read_status CASCADE;
+DROP TABLE IF EXISTS system_notifications CASCADE;
+
+-- 2. 建立 system_notifications 資料表
+CREATE TABLE system_notifications (
     id SERIAL PRIMARY KEY,
-
-    -- 通知內容
-    title VARCHAR(200) NOT NULL,                          -- 通知標題
-    content TEXT NOT NULL,                                 -- 通知內容
-    notification_type VARCHAR(50) NOT NULL DEFAULT 'info', -- 通知類型: info, warning, error, success
-
-    -- 顯示控制
-    start_time TIMESTAMP NOT NULL,                         -- 開始顯示時間
-    end_time TIMESTAMP,                                    -- 結束顯示時間（NULL表示永久）
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,              -- 是否啟用
-    is_popup BOOLEAN NOT NULL DEFAULT FALSE,              -- 是否彈出顯示
-    priority INTEGER NOT NULL DEFAULT 0,                   -- 優先級（數字越大越優先）
-
-    -- 目標對象
-    target_type VARCHAR(50) NOT NULL DEFAULT 'all',       -- 目標類型: all, role, user
-    target_roles JSONB DEFAULT '[]'::jsonb,               -- 目標角色ID列表
-    target_users JSONB DEFAULT '[]'::jsonb,               -- 目標使用者ID列表
-
-    -- 系統欄位
-    created_by INTEGER NOT NULL,                           -- 建立者
+    notice_csubject VARCHAR(200) NOT NULL,
+    notice_esubject VARCHAR(200) NOT NULL,
+    notice_cdescription TEXT NOT NULL,
+    notice_edescription TEXT NOT NULL,
+    notice_start_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    notice_end_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '3 days'),
+    notice_order INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    edit_by INTEGER NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    -- 外鍵
-    CONSTRAINT fk_notification_creator FOREIGN KEY (created_by)
-        REFERENCES user_detail(id) ON DELETE RESTRICT,
-
-    -- 檢查約束
-    CONSTRAINT chk_notification_type CHECK (notification_type IN ('info', 'warning', 'error', 'success')),
-    CONSTRAINT chk_target_type CHECK (target_type IN ('all', 'role', 'user')),
-    CONSTRAINT chk_time_range CHECK (end_time IS NULL OR end_time > start_time)
+    -- 外鍵約束
+    CONSTRAINT fk_system_notifications_edit_by
+        FOREIGN KEY (edit_by)
+        REFERENCES users(id)
+        ON DELETE RESTRICT
 );
 
--- 建立索引
+-- 3. 建立索引
 CREATE INDEX idx_notifications_active ON system_notifications(is_active);
-CREATE INDEX idx_notifications_time ON system_notifications(start_time, end_time);
-CREATE INDEX idx_notifications_type ON system_notifications(notification_type);
-CREATE INDEX idx_notifications_target ON system_notifications(target_type);
-CREATE INDEX idx_notifications_priority ON system_notifications(priority DESC);
+CREATE INDEX idx_notifications_time ON system_notifications(notice_start_at, notice_end_at);
+CREATE INDEX idx_notifications_order ON system_notifications(notice_order);
 
--- 建立通知已讀狀態追蹤表
--- notification_read_status: 記錄每個使用者對每則通知的已讀狀態
-
-CREATE TABLE IF NOT EXISTS notification_read_status (
+-- 4. 建立「本日不再閱讀」追蹤表
+CREATE TABLE notification_read_today (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    notification_id INTEGER NOT NULL,
+    read_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    notification_id INTEGER NOT NULL,                      -- 通知ID
-    user_id INTEGER NOT NULL,                             -- 使用者ID
-    read_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 已讀時間
+    -- 外鍵約束
+    CONSTRAINT fk_notification_read_today_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_notification_read_today_notification
+        FOREIGN KEY (notification_id)
+        REFERENCES system_notifications(id)
+        ON DELETE CASCADE,
 
-    -- 外鍵
-    CONSTRAINT fk_read_notification FOREIGN KEY (notification_id)
-        REFERENCES system_notifications(id) ON DELETE CASCADE,
-    CONSTRAINT fk_read_user FOREIGN KEY (user_id)
-        REFERENCES user_detail(id) ON DELETE CASCADE,
-
-    -- 唯一約束：每個使用者對每則通知只能有一筆已讀記錄
-    CONSTRAINT uq_notification_user UNIQUE (notification_id, user_id)
+    -- 唯一約束：每個使用者對每則通知每天只能有一筆記錄
+    CONSTRAINT uq_notification_read_today
+        UNIQUE (user_id, notification_id, read_date)
 );
 
--- 建立索引
-CREATE INDEX idx_read_status_notification ON notification_read_status(notification_id);
-CREATE INDEX idx_read_status_user ON notification_read_status(user_id);
-CREATE INDEX idx_read_status_time ON notification_read_status(read_at);
+-- 5. 建立追蹤表索引
+CREATE INDEX idx_notification_read_today_user ON notification_read_today(user_id);
+CREATE INDEX idx_notification_read_today_notification ON notification_read_today(notification_id);
+CREATE INDEX idx_notification_read_today_date ON notification_read_today(read_date);
 
--- 註解
-COMMENT ON TABLE system_notifications IS '系統通知主表';
-COMMENT ON TABLE notification_read_status IS '通知已讀狀態追蹤表';
+-- 6. 建立註解
+COMMENT ON TABLE system_notifications IS '系統通知明細檔';
+COMMENT ON COLUMN system_notifications.id IS '資料編號（自動編號）';
+COMMENT ON COLUMN system_notifications.notice_csubject IS '通知中文主旨';
+COMMENT ON COLUMN system_notifications.notice_esubject IS '通知英文主旨';
+COMMENT ON COLUMN system_notifications.notice_cdescription IS '通知中文說明（富文本格式）';
+COMMENT ON COLUMN system_notifications.notice_edescription IS '通知英文說明（富文本格式）';
+COMMENT ON COLUMN system_notifications.notice_start_at IS '通知開始時間';
+COMMENT ON COLUMN system_notifications.notice_end_at IS '通知結束時間';
+COMMENT ON COLUMN system_notifications.notice_order IS '訊息次序';
+COMMENT ON COLUMN system_notifications.is_active IS '啟用狀態';
+COMMENT ON COLUMN system_notifications.edit_by IS '資料建立/修改人員ID';
+COMMENT ON COLUMN system_notifications.created_at IS '資料建立時間';
+COMMENT ON COLUMN system_notifications.updated_at IS '資料最新修改時間';
 
-COMMENT ON COLUMN system_notifications.notification_type IS '通知類型: info(一般資訊), warning(警告), error(錯誤), success(成功)';
-COMMENT ON COLUMN system_notifications.target_type IS '目標類型: all(所有人), role(特定角色), user(特定使用者)';
-COMMENT ON COLUMN system_notifications.is_popup IS '是否在使用者登入時彈出顯示';
-COMMENT ON COLUMN system_notifications.priority IS '優先級，數字越大越優先顯示';
+COMMENT ON TABLE notification_read_today IS '通知本日不再閱讀追蹤表';
+COMMENT ON COLUMN notification_read_today.id IS '資料編號（自動編號）';
+COMMENT ON COLUMN notification_read_today.user_id IS '使用者ID';
+COMMENT ON COLUMN notification_read_today.notification_id IS '通知ID';
+COMMENT ON COLUMN notification_read_today.read_date IS '閱讀日期';
+COMMENT ON COLUMN notification_read_today.created_at IS '建立時間';
+
+-- 7. 在 system_functions 中新增系統通知功能項（如果不存在）
+-- 注意：system_notifications 功能項已存在，這裡的 INSERT 會被 ON CONFLICT DO NOTHING 略過
+
+-- 8. 測試資料（可選）
+-- INSERT INTO system_notifications (
+--     notice_csubject,
+--     notice_esubject,
+--     notice_cdescription,
+--     notice_edescription,
+--     notice_start_at,
+--     notice_end_at,
+--     notice_order,
+--     is_active,
+--     edit_by
+-- ) VALUES (
+--     '系統維護通知',
+--     'System Maintenance Notice',
+--     '<p>系統將於 2026-01-25 進行定期維護，預計維護時間 2 小時。</p>',
+--     '<p>The system will undergo scheduled maintenance on 2026-01-25, estimated duration: 2 hours.</p>',
+--     CURRENT_TIMESTAMP,
+--     CURRENT_TIMESTAMP + INTERVAL '7 days',
+--     1,
+--     TRUE,
+--     1
+-- );

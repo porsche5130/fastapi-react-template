@@ -19,6 +19,7 @@ import SystemFunctionsPage from './pages/SystemFunctionsPage';
 import RoleRightsPage from './pages/RoleRightsPage';
 import UserLogsPage from './pages/UserLogsPage';
 import SystemCodesPage from './pages/SystemCodesPage';
+import SystemNotificationsPage from './pages/SystemNotificationsPage';
 import HomePage from './pages/HomePage';
 import MainLayout from './components/MainLayout';
 import PrivateRoute from './components/PrivateRoute';
@@ -82,6 +83,7 @@ const AppRoutes: React.FC = () => {
         <Route path="role_rights" element={<RoleRightsPage />} />
         <Route path="user_logs" element={<UserLogsPage />} />
         <Route path="system_codes" element={<SystemCodesPage />} />
+        <Route path="system_notifications" element={<SystemNotificationsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

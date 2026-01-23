@@ -11,9 +11,9 @@ sqlalchemy==2.0.25
 psycopg2-binary==2.9.9
 alembic==1.13.1
 
-# Redis
-redis==5.0.1
-hiredis==2.3.2
+# Redis - 暫時停用
+# redis==5.0.1
+# hiredis==2.3.2
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0

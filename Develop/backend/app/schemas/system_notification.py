@@ -4,39 +4,20 @@ System Notification Schemas
 """
 
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 from pydantic import BaseModel, Field
-from enum import Enum
-
-
-class NotificationType(str, Enum):
-    """通知類型"""
-    INFO = "info"
-    WARNING = "warning"
-    ERROR = "error"
-    SUCCESS = "success"
-
-
-class TargetType(str, Enum):
-    """目標類型"""
-    ALL = "all"           # 所有使用者
-    ROLE = "role"         # 特定角色
-    USER = "user"         # 特定使用者
 
 
 class SystemNotificationBase(BaseModel):
     """系統通知基本資料"""
-    title: str = Field(..., max_length=200, description="通知標題")
-    content: str = Field(..., description="通知內容")
-    notification_type: NotificationType = Field(NotificationType.INFO, description="通知類型")
-    start_time: datetime = Field(..., description="開始顯示時間")
-    end_time: Optional[datetime] = Field(None, description="結束顯示時間（NULL表示永久）")
-    is_active: bool = Field(True, description="是否啟用")
-    is_popup: bool = Field(False, description="是否彈出顯示")
-    priority: int = Field(0, description="優先級（數字越大越優先）")
-    target_type: TargetType = Field(TargetType.ALL, description="目標類型")
-    target_roles: List[int] = Field(default_factory=list, description="目標角色ID列表")
-    target_users: List[int] = Field(default_factory=list, description="目標使用者ID列表")
+    notice_csubject: str = Field(..., max_length=200, description="通知中文主旨")
+    notice_esubject: str = Field(..., max_length=200, description="通知英文主旨")
+    notice_cdescription: str = Field(..., description="通知中文說明（富文本格式）")
+    notice_edescription: str = Field(..., description="通知英文說明（富文本格式）")
+    notice_start_at: datetime = Field(..., description="通知開始時間")
+    notice_end_at: datetime = Field(..., description="通知結束時間")
+    notice_order: int = Field(0, description="訊息次序")
+    is_active: bool = Field(True, description="啟用狀態")
 
 
 class SystemNotificationCreate(SystemNotificationBase):
@@ -46,49 +27,67 @@ class SystemNotificationCreate(SystemNotificationBase):
 
 class SystemNotificationUpdate(BaseModel):
     """更新系統通知（所有欄位可選）"""
-    title: Optional[str] = Field(None, max_length=200, description="通知標題")
-    content: Optional[str] = Field(None, description="通知內容")
-    notification_type: Optional[NotificationType] = Field(None, description="通知類型")
-    start_time: Optional[datetime] = Field(None, description="開始顯示時間")
-    end_time: Optional[datetime] = Field(None, description="結束顯示時間")
-    is_active: Optional[bool] = Field(None, description="是否啟用")
-    is_popup: Optional[bool] = Field(None, description="是否彈出顯示")
-    priority: Optional[int] = Field(None, description="優先級")
-    target_type: Optional[TargetType] = Field(None, description="目標類型")
-    target_roles: Optional[List[int]] = Field(None, description="目標角色ID列表")
-    target_users: Optional[List[int]] = Field(None, description="目標使用者ID列表")
+    notice_csubject: Optional[str] = Field(None, max_length=200, description="通知中文主旨")
+    notice_esubject: Optional[str] = Field(None, max_length=200, description="通知英文主旨")
+    notice_cdescription: Optional[str] = Field(None, description="通知中文說明（富文本格式）")
+    notice_edescription: Optional[str] = Field(None, description="通知英文說明（富文本格式）")
+    notice_start_at: Optional[datetime] = Field(None, description="通知開始時間")
+    notice_end_at: Optional[datetime] = Field(None, description="通知結束時間")
+    notice_order: Optional[int] = Field(None, description="訊息次序")
+    is_active: Optional[bool] = Field(None, description="啟用狀態")
 
 
 class SystemNotificationResponse(SystemNotificationBase):
     """系統通知回應資料"""
     id: int
-    created_by: int
+    edit_by: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    is_read: Optional[bool] = Field(None, description="是否已讀（針對當前使用者）")
-    read_at: Optional[datetime] = Field(None, description="已讀時間（針對當前使用者）")
 
     class Config:
         from_attributes = True
 
 
-class NotificationReadStatusCreate(BaseModel):
-    """標記通知為已讀"""
-    notification_id: int = Field(..., description="通知ID")
+class NotificationCloseDateCreate(BaseModel):
+    """建立通知關閉日期記錄"""
+    closed_at: Optional[date] = Field(None, description="關閉日期（預設今日）")
 
 
-class NotificationReadStatusResponse(BaseModel):
-    """已讀狀態回應"""
+class NotificationCloseDateResponse(BaseModel):
+    """通知關閉日期記錄回應"""
     id: int
-    notification_id: int
-    user_id: int
-    read_at: datetime
+    closed_at: date
+    edit_by: int
+    created_at: datetime
 
     class Config:
         from_attributes = True
 
 
-class UnreadNotificationsResponse(BaseModel):
-    """未讀通知統計回應"""
-    unread_count: int = Field(..., description="未讀通知數量")
-    notifications: List[SystemNotificationResponse] = Field(..., description="未讀通知列表")
+class TodayNotificationsResponse(BaseModel):
+    """今日通知回應（用於 Home 頁面 Modal）"""
+    notifications: List[SystemNotificationResponse] = Field(..., description="今日通知列表（依次序排序）")
+
+
+class DataTablesRequest(BaseModel):
+    """DataTables 請求參數"""
+    draw: int = Field(..., description="繪圖計數器")
+    start: int = Field(0, ge=0, description="起始位置")
+    length: int = Field(10, ge=1, le=1000, description="每頁筆數")
+    search_value: Optional[str] = Field(None, description="全文檢索值")
+    order_column: Optional[int] = Field(None, description="排序欄位索引")
+    order_dir: Optional[str] = Field("asc", description="排序方向")
+
+    # 篩選欄位
+    filter_notice_end_at_start: Optional[datetime] = Field(None, description="結束時間起始")
+    filter_notice_end_at_end: Optional[datetime] = Field(None, description="結束時間結束")
+    filter_notice_order: Optional[int] = Field(None, description="訊息次序")
+    filter_is_active: Optional[bool] = Field(None, description="啟用狀態")
+
+
+class DataTablesResponse(BaseModel):
+    """DataTables 回應格式"""
+    draw: int
+    recordsTotal: int
+    recordsFiltered: int
+    data: List[SystemNotificationResponse]

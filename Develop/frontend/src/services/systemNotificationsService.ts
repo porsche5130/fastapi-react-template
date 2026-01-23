@@ -1,47 +1,62 @@
 /**
+ * 系統通知服務
  * System Notifications Service
- * 系統通知相關 API
  */
 
-import axios from '../api/axios';
-import {
-  SystemNotification,
-  SystemNotificationCreate,
-  SystemNotificationUpdate,
-  UnreadNotificationsResponse,
-  GetNotificationsParams
-} from '../types/systemNotifications';
+import api from './api';
 
-// Re-export types for convenience
-export type {
-  SystemNotification,
-  SystemNotificationCreate,
-  SystemNotificationUpdate,
-  UnreadNotificationsResponse,
-  GetNotificationsParams
-};
+export interface SystemNotification {
+  id: number;
+  notice_csubject: string;
+  notice_esubject: string;
+  notice_cdescription: string;
+  notice_edescription: string;
+  notice_start_at: string;
+  notice_end_at: string;
+  notice_order: number;
+  is_active: boolean;
+  edit_by: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface SystemNotificationCreate {
+  notice_csubject: string;
+  notice_esubject: string;
+  notice_cdescription: string;
+  notice_edescription: string;
+  notice_start_at: string;
+  notice_end_at: string;
+  notice_order?: number;
+  is_active?: boolean;
+}
+
+export interface SystemNotificationUpdate {
+  notice_csubject?: string;
+  notice_esubject?: string;
+  notice_cdescription?: string;
+  notice_edescription?: string;
+  notice_start_at?: string;
+  notice_end_at?: string;
+  notice_order?: number;
+  is_active?: boolean;
+}
+
+export interface TodayNotificationsResponse {
+  notifications: SystemNotification[];
+}
 
 /**
- * 取得系統通知列表（管理功能）
+ * 取得系統通知列表
  */
-export const getSystemNotifications = async (params?: GetNotificationsParams): Promise<SystemNotification[]> => {
-  const response = await axios.get('/api/system_notifications/', { params });
-  return response.data;
-};
-
-/**
- * 取得當前使用者應該看到的有效通知
- */
-export const getActiveNotifications = async (): Promise<SystemNotification[]> => {
-  const response = await axios.get('/api/system_notifications/active');
-  return response.data;
-};
-
-/**
- * 取得當前使用者的未讀通知
- */
-export const getUnreadNotifications = async (): Promise<UnreadNotificationsResponse> => {
-  const response = await axios.get('/api/system_notifications/unread');
+export const getSystemNotifications = async (params?: {
+  skip?: number;
+  limit?: number;
+  is_active?: boolean;
+  notice_order?: number;
+  search?: string;
+}): Promise<SystemNotification[]> => {
+  const response = await api.get<SystemNotification[]>('/system_notifications', { params });
   return response.data;
 };
 
@@ -49,7 +64,7 @@ export const getUnreadNotifications = async (): Promise<UnreadNotificationsRespo
  * 取得單一系統通知
  */
 export const getSystemNotification = async (notificationId: number): Promise<SystemNotification> => {
-  const response = await axios.get(`/api/system_notifications/${notificationId}`);
+  const response = await api.get<SystemNotification>(`/system_notifications/${notificationId}`);
   return response.data;
 };
 
@@ -57,7 +72,7 @@ export const getSystemNotification = async (notificationId: number): Promise<Sys
  * 建立系統通知
  */
 export const createSystemNotification = async (data: SystemNotificationCreate): Promise<SystemNotification> => {
-  const response = await axios.post('/api/system_notifications/', data);
+  const response = await api.post<SystemNotification>('/system_notifications', data);
   return response.data;
 };
 
@@ -68,7 +83,7 @@ export const updateSystemNotification = async (
   notificationId: number,
   data: SystemNotificationUpdate
 ): Promise<SystemNotification> => {
-  const response = await axios.put(`/api/system_notifications/${notificationId}`, data);
+  const response = await api.put<SystemNotification>(`/system_notifications/${notificationId}`, data);
   return response.data;
 };
 
@@ -76,21 +91,28 @@ export const updateSystemNotification = async (
  * 刪除系統通知
  */
 export const deleteSystemNotification = async (notificationId: number): Promise<void> => {
-  await axios.delete(`/api/system_notifications/${notificationId}`);
+  await api.delete(`/system_notifications/${notificationId}`);
 };
 
 /**
- * 標記通知為已讀
+ * 切換通知啟用狀態
  */
-export const markNotificationAsRead = async (notificationId: number): Promise<void> => {
-  await axios.post('/api/system_notifications/mark-as-read', {
-    notification_id: notificationId
-  });
+export const toggleSystemNotificationActive = async (notificationId: number): Promise<SystemNotification> => {
+  const response = await api.patch<SystemNotification>(`/system_notifications/${notificationId}/toggle-active`);
+  return response.data;
 };
 
 /**
- * 標記所有通知為已讀
+ * 取得今日應顯示的通知（用於 Home 頁面）
  */
-export const markAllNotificationsAsRead = async (): Promise<void> => {
-  await axios.post('/api/system_notifications/mark-all-as-read');
+export const getHomeNotifications = async (): Promise<TodayNotificationsResponse> => {
+  const response = await api.get<TodayNotificationsResponse>('/system_notifications/home/notifications');
+  return response.data;
+};
+
+/**
+ * 標記今日不再顯示通知
+ */
+export const closeNotificationsToday = async (closedAt?: string): Promise<void> => {
+  await api.post('/system_notifications/close-today', { closed_at: closedAt });
 };

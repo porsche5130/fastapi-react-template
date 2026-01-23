@@ -25,9 +25,10 @@ class Settings(BaseSettings):
     )
 
     # Redis
-    REDIS_URL: str = Field(
-        default="redis://:!DC1qaz2wsx@localhost:6379/0"
-    )
+    REDIS_HOST: str = Field(default="localhost")
+    REDIS_PORT: int = Field(default=6379)
+    REDIS_DB: int = Field(default=0)
+    REDIS_PASSWORD: str = Field(default="!DC1qaz2wsx")
 
     # Security
     SECRET_KEY: str = Field(

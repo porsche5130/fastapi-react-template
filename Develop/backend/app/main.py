@@ -4,15 +4,17 @@ FastAPI 主應用程式
 """
 
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
+from app.core.redis_client import init_redis, close_redis, redis_health_check
 from app.routes import (
     auth, system, organization, sys_profile,
     users, permissions,
     systemcode, system_functions, system_notifications,
-    user_roles, role_rights, user_logs, home
+    user_roles, role_rights, user_logs, home, transaction
 )
 
 # 配置日誌
@@ -21,13 +23,44 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
+logger = logging.getLogger(__name__)
+
+
+# 生命週期事件
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 啟動時執行
+    logger.info("🚀 應用程式啟動中...")
+
+    # 初始化 Redis
+    try:
+        init_redis(
+            host=getattr(settings, 'REDIS_HOST', 'localhost'),
+            port=getattr(settings, 'REDIS_PORT', 6379),
+            db=getattr(settings, 'REDIS_DB', 0),
+            password=getattr(settings, 'REDIS_PASSWORD', None)
+        )
+    except Exception as e:
+        logger.warning(f"⚠️  Redis 初始化失敗,使用記憶體儲存: {e}")
+
+    logger.info("✅ 應用程式啟動完成")
+
+    yield  # 應用程式運行期間
+
+    # 關閉時執行
+    logger.info("🛑 應用程式關閉中...")
+    close_redis()
+    logger.info("✅ 應用程式已關閉")
+
+
 # 建立 FastAPI 應用程式
 app = FastAPI(
     title="PA6.4 Management System API",
     description="Paris Agreement Article 6.4 管理系統 API",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # CORS 設定
@@ -46,6 +79,7 @@ app.mount("/locales", StaticFiles(directory=str(settings.locales_path)), name="l
 
 # 註冊路由
 app.include_router(auth.router, prefix="/api/auth", tags=["認證"])
+app.include_router(transaction.router, prefix="/api/transaction", tags=["交易令牌"])
 app.include_router(home.router, prefix="/api/home", tags=["系統首頁"])
 app.include_router(system.router, prefix="/api/system", tags=["系統管理"])
 app.include_router(organization.router, prefix="/api/organizations", tags=["組織管理"])
@@ -86,9 +120,12 @@ async def root():
 @app.get("/api/health", tags=["健康檢查"])
 async def health_check():
     """健康檢查端點"""
+    redis_status = "healthy" if redis_health_check() else "unavailable (using memory storage)"
+
     return {
         "status": "healthy",
-        "environment": settings.ENVIRONMENT
+        "environment": settings.ENVIRONMENT,
+        "redis": redis_status
     }
 
 

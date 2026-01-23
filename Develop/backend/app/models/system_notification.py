@@ -3,8 +3,7 @@ System Notification Models
 系統通知模型
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, Text, ForeignKey, CheckConstraint, Index
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, Text, Date, ForeignKey, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -18,78 +17,62 @@ class SystemNotification(Base):
     # 主鍵
     id = Column(Integer, primary_key=True, index=True)
 
-    # 通知內容
-    title = Column(String(200), nullable=False)
-    content = Column(Text, nullable=False)
-    notification_type = Column(String(50), nullable=False, default='info', index=True)
+    # 通知主旨（中英文）
+    notice_csubject = Column(String(200), nullable=False)
+    notice_esubject = Column(String(200), nullable=False)
+
+    # 通知說明（中英文，富文本格式）
+    notice_cdescription = Column(Text, nullable=False)
+    notice_edescription = Column(Text, nullable=False)
+
+    # 時間控制
+    notice_start_at = Column(TIMESTAMP, nullable=False, server_default=func.current_timestamp(), index=True)
+    notice_end_at = Column(TIMESTAMP, nullable=False, index=True)
 
     # 顯示控制
-    start_time = Column(TIMESTAMP, nullable=False, index=True)
-    end_time = Column(TIMESTAMP, index=True)
+    notice_order = Column(Integer, nullable=False, default=0, index=True)
     is_active = Column(Boolean, nullable=False, default=True, index=True)
-    is_popup = Column(Boolean, nullable=False, default=False)
-    priority = Column(Integer, nullable=False, default=0, index=True)
-
-    # 目標對象
-    target_type = Column(String(50), nullable=False, default='all', index=True)
-    target_roles = Column(JSONB, nullable=False, default=list)
-    target_users = Column(JSONB, nullable=False, default=list)
 
     # 系統欄位
-    created_by = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    edit_by = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     created_at = Column(TIMESTAMP, nullable=False, server_default=func.current_timestamp())
-    updated_at = Column(TIMESTAMP)
+    updated_at = Column(TIMESTAMP, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
 
-    # 約束
+    # 索引
     __table_args__ = (
-        CheckConstraint(
-            "notification_type IN ('info', 'warning', 'error', 'success')",
-            name="chk_notification_type"
-        ),
-        CheckConstraint(
-            "target_type IN ('all', 'role', 'user')",
-            name="chk_target_type"
-        ),
-        CheckConstraint(
-            "end_time IS NULL OR end_time > start_time",
-            name="chk_time_range"
-        ),
         Index("idx_notifications_active", "is_active"),
-        Index("idx_notifications_time", "start_time", "end_time"),
-        Index("idx_notifications_type", "notification_type"),
-        Index("idx_notifications_target", "target_type"),
-        Index("idx_notifications_priority", "priority"),
+        Index("idx_notifications_time", "notice_start_at", "notice_end_at"),
+        Index("idx_notifications_order", "notice_order"),
     )
 
     # 關聯
-    creator = relationship("User", foreign_keys=[created_by])
-    read_statuses = relationship("NotificationReadStatus", back_populates="notification", cascade="all, delete-orphan")
+    editor = relationship("User", foreign_keys=[edit_by])
 
 
-class NotificationReadStatus(Base):
-    """通知已讀狀態追蹤表"""
+class NotificationCloseDate(Base):
+    """系統通知關閉日期記錄表"""
 
-    __tablename__ = "notification_read_status"
+    __tablename__ = "notification_closedates"
 
     # 主鍵
     id = Column(Integer, primary_key=True, index=True)
 
-    # 外鍵
-    notification_id = Column(Integer, ForeignKey("system_notifications.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    # 不顯示訊息日期
+    closed_at = Column(Date, nullable=False, server_default=func.current_date(), index=True)
 
-    # 已讀時間
-    read_at = Column(TIMESTAMP, nullable=False, server_default=func.current_timestamp(), index=True)
+    # 資料建立者
+    edit_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    # 約束
+    # 建立時間
+    created_at = Column(TIMESTAMP, nullable=False, server_default=func.current_timestamp())
+
+    # 索引（確保每個使用者每天只有一筆記錄）
     __table_args__ = (
-        Index("idx_read_status_notification", "notification_id"),
-        Index("idx_read_status_user", "user_id"),
-        Index("idx_read_status_time", "read_at"),
-        # 唯一約束：每個使用者對每則通知只能有一筆已讀記錄
-        {"schema": "public"},
+        Index("idx_notification_closedates_edit_by", "edit_by"),
+        Index("idx_notification_closedates_closed_at", "closed_at"),
+        Index("idx_notification_closedates_edit_by_closed_at", "edit_by", "closed_at"),
+        {"sqlite_autoincrement": True},
     )
 
     # 關聯
-    notification = relationship("SystemNotification", back_populates="read_statuses")
     user = relationship("User")
