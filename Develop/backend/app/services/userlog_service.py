@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-from app.models.user_logs import UserLog
-from app.models.system_functions import SystemFunction
+from app.models.userlog import UserLog
+from app.models.systemfunction import SystemFunction
 from app.core.deps import session_id_ctx
 
 logger = logging.getLogger(__name__)

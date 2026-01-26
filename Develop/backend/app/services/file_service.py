@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from fastapi import HTTPException, status, UploadFile
 
-from app.models.file_attachments import FileAttachment
+from app.models.fileattachment import FileAttachment
 from app.models.user import User
 from app.core.config import settings
 
@@ -284,7 +284,7 @@ class FileService:
 
             # 檢查使用者角色是否在允許列表中
             if file_record.allowed_roles:
-                from app.models.user_roles import UserRole
+                from app.models.userrole import UserRole
                 user_roles = db.query(UserRole.role_name).filter(
                     UserRole.user_id == current_user.id
                 ).all()

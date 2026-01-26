@@ -71,7 +71,7 @@ async def login(
     session_id_ctx.set(session_id)
 
     # 查詢使用者有權限的功能 IDs (is_read = true)
-    from app.models.role_rights import RoleRight
+    from app.models.roleright import RoleRight
     role_ids = user.user_role if isinstance(user.user_role, list) else []
 
     # 取得使用者所有有讀取權限的功能 IDs

@@ -5,7 +5,7 @@ Dynamic Router
 
 from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
-from app.models.system_functions import SystemFunction
+from app.models.systemfunction import SystemFunction
 
 
 class DynamicRouter:

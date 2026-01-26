@@ -134,7 +134,7 @@ async def request_transaction_token(
         )
 
     # 取得 system_function_id
-    from app.models.system_functions import SystemFunction
+    from app.models.systemfunction import SystemFunction
     system_function = db.query(SystemFunction).filter(
         SystemFunction.func_code == func_code
     ).first()

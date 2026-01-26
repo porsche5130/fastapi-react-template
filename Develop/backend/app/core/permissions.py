@@ -25,9 +25,9 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.role_rights import RoleRight
+from app.models.roleright import RoleRight
 from app.models.user import User
-from app.models.system_functions import SystemFunction
+from app.models.systemfunction import SystemFunction
 
 logger = logging.getLogger(__name__)
 
