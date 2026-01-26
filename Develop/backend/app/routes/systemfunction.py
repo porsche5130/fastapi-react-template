@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.core.permissions import check_permission
 from app.models.system_functions import SystemFunction
+from app.routes.transaction import require_txn_token
 from app.models.user import User
 from app.schemas.system_functions import (
     SystemFunctionResponse,
@@ -68,14 +68,17 @@ async def get_functions(
     func_type: Optional[int] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_functions", "read"))
 ):
     """
     取得系統功能列表
 
-    此 API 用於生成選單,所有登入使用者都可以呼叫
+    需要 system_functions 功能的 read 權限
 
-    需要提供 Bearer Token
+    此 API 用於管理系統功能
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
     query = db.query(SystemFunction)
 
@@ -101,14 +104,17 @@ async def get_functions(
 async def get_functions_tree(
     is_active: Optional[bool] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_functions", "read"))
 ):
     """
     取得系統功能樹狀結構
 
-    此 API 用於生成選單,所有登入使用者都可以呼叫
+    需要 system_functions 功能的 read 權限
 
-    需要提供 Bearer Token
+    此 API 用於管理系統功能
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
     query = db.query(SystemFunction)
 
@@ -127,10 +133,13 @@ async def get_functions_tree(
 async def get_function_by_code(
     func_code: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_functions", "read"))
 ):
     """
     根據 func_code 取得系統功能資訊（包含 module_item）
+
+    需要 system_functions 功能的 read 權限
 
     此 API 用於前端頁面初始化時取得功能的 module_item
     module_item 定義了該功能的基本要求（應該提供哪些操作項目）
@@ -141,7 +150,7 @@ async def get_function_by_code(
     // functionInfo.module_item = ["create", "read", "update", "delete"]
     ```
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
     function = db.query(SystemFunction).filter(SystemFunction.func_code == func_code).first()
     if not function:
@@ -157,14 +166,15 @@ async def get_function_by_code(
 async def get_function(
     function_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_functions", "read"))
 ):
     """
     取得系統功能資訊
 
-    此 API 用於查詢功能詳細資訊,所有登入使用者都可以呼叫
+    需要 system_functions 功能的 read 權限
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
     function = db.query(SystemFunction).filter(SystemFunction.id == function_id).first()
     if not function:
@@ -177,19 +187,17 @@ async def get_function(
 async def create_function(
     function_data: SystemFunctionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_functions", "create"))
 ):
     """
     建立系統功能
 
-    需要提供 Bearer Token 及 system_functions 建立權限
+    需要 system_functions 功能的 create 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_functions", "create"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限建立系統功能"
-        )
+    # Token 已驗證 create 權限，不需要再次檢查
 
     # 檢查 func_code 是否已存在
     existing = db.query(SystemFunction).filter(SystemFunction.func_code == function_data.func_code).first()
@@ -220,19 +228,17 @@ async def update_function(
     function_id: int,
     function_data: SystemFunctionUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_functions", "update"))
 ):
     """
     更新系統功能
 
-    需要提供 Bearer Token 及 system_functions 修改權限
+    需要 system_functions 功能的 update 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_functions", "update"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限修改系統功能"
-        )
+    # Token 已驗證 update 權限，不需要再次檢查
 
     function = db.query(SystemFunction).filter(SystemFunction.id == function_id).first()
     if not function:
@@ -270,19 +276,18 @@ async def update_function(
 async def delete_function(
     function_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_functions", "delete", one_time_use=True))
 ):
     """
     刪除系統功能
 
-    需要提供 Bearer Token 及 system_functions 刪除權限
+    需要 system_functions 功能的 delete 權限
+    此操作為一次性使用，Token 使用後立即失效
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_functions", "delete"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限刪除系統功能"
-        )
+    # Token 已驗證 delete 權限，且使用後立即失效
 
     function = db.query(SystemFunction).filter(SystemFunction.id == function_id).first()
     if not function:

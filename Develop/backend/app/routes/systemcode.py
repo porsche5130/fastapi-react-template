@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.core.permissions import check_permission
 from app.models.systemcode import SystemCode
+from app.routes.transaction import require_txn_token
 from app.models.user import User
 from app.schemas.systemcode import (
     SystemCodeResponse,
@@ -57,10 +57,13 @@ async def get_system_codes(
     is_active: bool = None,
     search: str = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_codes", "read"))
 ):
     """
     取得系統代碼列表
+
+    需要 system_codes 功能的 read 權限
 
     - **code_etype**: 代碼類別英文名稱（模糊搜尋）
     - **code_ctype**: 代碼類別中文名稱（模糊搜尋）
@@ -70,14 +73,9 @@ async def get_system_codes(
     - **is_active**: 啟用狀態
     - **search**: 綜合搜尋（代碼類別、代碼編號、代碼名稱）
 
-    需要提供 Bearer Token 及 system_codes 讀取權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_codes", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取系統代碼"
-        )
+    # Token 已驗證 read 權限
 
     query = SystemCodeQuery(
         code_etype=code_etype,
@@ -97,21 +95,19 @@ async def get_system_codes(
 async def get_system_code(
     code_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_codes", "read"))
 ):
     """
     取得系統代碼資訊
 
+    需要 system_codes 功能的 read 權限
+
     - **code_id**: 系統代碼 ID
 
-    需要提供 Bearer Token 及 system_codes 讀取權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_codes", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取系統代碼"
-        )
+    # Token 已驗證 read 權限
 
     code = SystemCodeService.get_by_id(db, code_id)
     if not code:
@@ -127,19 +123,17 @@ async def get_system_code(
 async def create_system_code(
     code_data: SystemCodeCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_codes", "create"))
 ):
     """
     建立系統代碼
 
-    需要提供 Bearer Token 及 system_codes 新增權限
+    需要 system_codes 功能的 create 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_codes", "create"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限新增系統代碼"
-        )
+    # Token 已驗證 create 權限
 
     try:
         new_code = SystemCodeService.create(db, code_data, current_user.id)
@@ -157,21 +151,19 @@ async def update_system_code(
     code_id: int,
     code_data: SystemCodeUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_codes", "update"))
 ):
     """
     更新系統代碼
 
+    需要 system_codes 功能的 update 權限
+
     - **code_id**: 系統代碼 ID
 
-    需要提供 Bearer Token 及 system_codes 修改權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_codes", "update"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限修改系統代碼"
-        )
+    # Token 已驗證 update 權限
 
     # 取得原始資料（用於日誌記錄）
     original_code = SystemCodeService.get_by_id(db, code_id)
@@ -196,21 +188,20 @@ async def update_system_code(
 async def delete_system_code(
     code_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_codes", "delete", one_time_use=True))
 ):
     """
     刪除系統代碼
 
+    需要 system_codes 功能的 delete 權限
+    此操作為一次性使用，Token 使用後立即失效
+
     - **code_id**: 系統代碼 ID
 
-    需要提供 Bearer Token 及 system_codes 刪除權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_codes", "delete"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限刪除系統代碼"
-        )
+    # Token 已驗證 delete 權限，且使用後立即失效
 
     # 取得原始資料（用於日誌記錄）
     original_code = SystemCodeService.get_by_id(db, code_id)
@@ -245,23 +236,21 @@ async def get_system_codes_by_type(
     code_ctype: str = None,
     active_only: bool = True,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_codes", "read"))
 ):
     """
     根據代碼類別查詢系統代碼
+
+    需要 system_codes 功能的 read 權限
 
     - **code_etype**: 代碼類別英文名稱
     - **code_ctype**: 代碼類別中文名稱（可選）
     - **active_only**: 只查詢啟用的代碼（預設: true）
 
-    需要提供 Bearer Token 及 system_codes 讀取權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_codes", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取系統代碼"
-        )
+    # Token 已驗證 read 權限
 
     codes = SystemCodeService.get_by_type(db, code_etype, code_ctype, active_only)
     return codes

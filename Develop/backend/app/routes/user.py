@@ -11,7 +11,7 @@ from sqlalchemy.sql import func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.core.permissions import check_permission
+from app.core.permissions import check_permission  # 保留用於資料層級安全控制
 from app.core.security import get_password_hash, verify_password
 from datetime import datetime, timezone, timedelta
 from app.models.user import User
@@ -61,10 +61,13 @@ async def get_users(
     organization_id: Optional[int] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("users", "read"))
 ):
     """
     取得使用者列表
+
+    需要 users 功能的 read 權限
 
     資料層級安全控制:一般使用者只能查看自己組織的使用者
 
@@ -74,14 +77,16 @@ async def get_users(
     - **organization_id**: 組織單位ID (可選)
     - **search**: 搜尋關鍵字 (帳號或名稱)
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 read 權限
     query = db.query(User)
 
-    # 資料層級安全控制:檢查使用者是否有 users 管理權限
+    # 資料層級安全控制:檢查使用者是否有完整的 users 管理權限
     # 如果沒有,只能查看自己組織的使用者
-    has_user_permission = check_permission(db, current_user, "users", "read")
-    if not has_user_permission:
+    # 注意:這裡不是檢查 Token,而是檢查使用者的角色權限範圍
+    has_full_permission = check_permission(db, current_user, "users", "read")
+    if not has_full_permission:
         # 只能查看自己組織的使用者
         query = query.filter(User.organization_id == current_user.organization_id)
 
@@ -218,17 +223,21 @@ async def update_my_profile(
 async def get_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("users", "read"))
 ):
     """
     取得使用者資訊
+
+    需要 users 功能的 read 權限
 
     資料層級安全控制:一般使用者只能查看自己組織的使用者
 
     - **user_id**: 使用者 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 read 權限
     user = db.query(User).filter(User.id == user_id).first()
 
     if not user:
@@ -238,8 +247,8 @@ async def get_user(
         )
 
     # 資料層級安全控制:檢查是否有權限查看此使用者
-    has_user_permission = check_permission(db, current_user, "users", "read")
-    if not has_user_permission and user.organization_id != current_user.organization_id:
+    has_full_permission = check_permission(db, current_user, "users", "read")
+    if not has_full_permission and user.organization_id != current_user.organization_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="無權限讀取此使用者資訊"
@@ -252,19 +261,17 @@ async def get_user(
 async def create_user(
     user_data: UserDetailCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("users", "create"))
 ):
     """
     建立使用者
 
-    需要提供 Bearer Token 及 users 新增權限
+    需要 users 功能的 create 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "users", "create"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限新增使用者"
-        )
+    # Token 已驗證 create 權限，不需要再次檢查
 
     # 檢查帳號是否已存在
     existing = db.query(User).filter(User.account == user_data.account).first()
@@ -308,21 +315,19 @@ async def update_user(
     user_id: int,
     user_data: UserDetailUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("users", "update"))
 ):
     """
     更新使用者
 
+    需要 users 功能的 update 權限
+
     - **user_id**: 使用者 ID
 
-    需要提供 Bearer Token 及 users 修改權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "users", "update"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限修改使用者"
-        )
+    # Token 已驗證 update 權限，不需要再次檢查
 
     # 查詢使用者
     user = db.query(User).filter(User.id == user_id).first()
@@ -383,21 +388,20 @@ async def update_user(
 async def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("users", "delete", one_time_use=True))
 ):
     """
     刪除使用者（軟刪除，設定 is_active = False）
 
+    需要 users 功能的 delete 權限
+    此操作為一次性使用，Token 使用後立即失效
+
     - **user_id**: 使用者 ID
 
-    需要提供 Bearer Token 及 users 刪除權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "users", "delete"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限刪除使用者"
-        )
+    # Token 已驗證 delete 權限，且使用後立即失效
 
     # 查詢使用者
     user = db.query(User).filter(User.id == user_id).first()

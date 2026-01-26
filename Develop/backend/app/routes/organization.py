@@ -11,8 +11,9 @@ from sqlalchemy.sql import func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.core.permissions import check_permission, check_permission_and_manage_token
+from app.core.permissions import check_permission  # 保留用於資料層級安全控制
 from app.models.organization import Organization
+from app.routes.transaction import require_txn_token
 from app.models.user import User
 from app.schemas.organization import OrganizationResponse, OrganizationCreate, OrganizationUpdate
 from app.services.userlog_service import UserLogService
@@ -49,10 +50,13 @@ async def get_organizations(
     is_active: Optional[bool] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("organizations", "read"))
 ):
     """
     取得組織單位列表
+
+    需要 organizations 功能的 read 權限
 
     資料層級安全控制:一般使用者只能查看自己的組織
 
@@ -61,14 +65,15 @@ async def get_organizations(
     - **is_active**: 是否啟用 (可選)
     - **search**: 搜尋關鍵字 (組織代碼或名稱)
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 read 權限
     query = db.query(Organization)
 
-    # 資料層級安全控制:檢查使用者是否有 organizations 管理權限
+    # 資料層級安全控制:檢查使用者是否有完整的 organizations 管理權限
     # 如果沒有,只能查看自己的組織
-    has_org_permission = check_permission(db, current_user, "organizations", "read")
-    if not has_org_permission:
+    has_full_permission = check_permission(db, current_user, "organizations", "read")
+    if not has_full_permission:
         # 只能查看自己的組織
         query = query.filter(Organization.id == current_user.organization_id)
 
@@ -90,17 +95,21 @@ async def get_organizations(
 async def get_organization(
     organization_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("organizations", "read"))
 ):
     """
     取得組織單位資訊
+
+    需要 organizations 功能的 read 權限
 
     資料層級安全控制:一般使用者只能查看自己的組織
 
     - **organization_id**: 組織單位 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 read 權限
     organization = db.query(Organization).filter(Organization.id == organization_id).first()
 
     if not organization:
@@ -110,8 +119,8 @@ async def get_organization(
         )
 
     # 資料層級安全控制:檢查是否有權限查看此組織
-    has_org_permission = check_permission(db, current_user, "organizations", "read")
-    if not has_org_permission and organization.id != current_user.organization_id:
+    has_full_permission = check_permission(db, current_user, "organizations", "read")
+    if not has_full_permission and organization.id != current_user.organization_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="無權限讀取此組織資訊"
@@ -124,15 +133,17 @@ async def get_organization(
 async def create_organization(
     organization_data: OrganizationCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("organizations", "create"))
 ):
     """
     建立組織單位
 
-    需要提供 Bearer Token 及 organizations 新增權限
+    需要 organizations 功能的 create 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限並自動管理 Transaction Token
-    check_permission_and_manage_token(db, current_user, "organizations", "create")
+    # Token 已驗證 create 權限，不需要再次檢查
 
     # 檢查組織代碼是否已存在
     existing = db.query(Organization).filter(Organization.org_code == organization_data.org_code).first()
@@ -160,24 +171,19 @@ async def update_organization(
     organization_id: int,
     organization_data: OrganizationUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("organizations", "update"))
 ):
     """
     更新組織單位
 
+    需要 organizations 功能的 update 權限
+
     - **organization_id**: 組織單位 ID
 
-    需要提供 Bearer Token 及 organizations 修改權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限並自動管理 Transaction Token
-    check_permission_and_manage_token(db, current_user, "organizations", "update")
-
-    # 原本的錯誤處理邏輯需要移除 check 改為使用上面的函數
-    if False:  # 這段程式碼已被上面的函數取代
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限修改組織設定"
-        )
+    # Token 已驗證 update 權限，不需要再次檢查
 
     # 查詢組織單位
     organization = db.query(Organization).filter(Organization.id == organization_id).first()
@@ -217,21 +223,20 @@ async def update_organization(
 async def delete_organization(
     organization_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("organizations", "delete", one_time_use=True))
 ):
     """
-    刪除組織單位（軟刪除，設定 is_active = False）
+    刪除組織單位（真正刪除）
+
+    需要 organizations 功能的 delete 權限
+    此操作為一次性使用，Token 使用後立即失效
 
     - **organization_id**: 組織單位 ID
 
-    需要提供 Bearer Token 及 organizations 刪除權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "organizations", "delete"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限刪除組織設定"
-        )
+    # Token 已驗證 delete 權限，且使用後立即失效
 
     # 查詢組織單位
     organization = db.query(Organization).filter(Organization.id == organization_id).first()
