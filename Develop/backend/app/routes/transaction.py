@@ -151,6 +151,7 @@ async def request_transaction_token(
     txn_token = get_or_create_function_token(
         session_id=session_id,
         system_functions_id=system_function.id,
+        permissions=permissions,  # 儲存權限資訊到 token
         valid_minutes=30  # 改為 30 分鐘
     )
 
@@ -285,17 +286,20 @@ def require_txn_token(
                 detail="無法取得 Session ID,請重新登入"
             )
 
-        # 驗證 token (綁定 session_id)
-        verify_txn_token(
+        # 驗證 token (綁定 session_id) 並取得權限資訊
+        token_info = verify_txn_token(
             txn_token=x_txn_token,
             session_id=session_id,
             func_code=func_code,
             one_time_use=one_time_use
         )
 
-        # 如果指定了必要權限,額外檢查
+        # 從 token 中取得權限資訊（不需要再查資料庫）
+        permissions = token_info.get("permissions", {})
+
+        # 如果指定了必要權限，檢查 token 中的權限
         if required_permission:
-            has_permission = check_permission(db, current_user, func_code, required_permission)
+            has_permission = permissions.get(required_permission, False)
             if not has_permission:
                 logger.warning(
                     f"[Transaction Token] 使用者 {current_user.id} Token 有效但缺少權限: "

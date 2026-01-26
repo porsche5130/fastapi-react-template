@@ -38,6 +38,7 @@ def get_taipei_now():
 def get_or_create_function_token(
     session_id: str,
     system_functions_id: int,
+    permissions: dict = None,
     valid_minutes: int = 30
 ) -> str:
     """
@@ -49,6 +50,7 @@ def get_or_create_function_token(
     Args:
         session_id: Session ID
         system_functions_id: 系統功能 ID
+        permissions: 使用者權限 dict (create, read, update, delete, print, file)
         valid_minutes: 有效期限(分鐘)，預設 30 分鐘
 
     Returns:
@@ -85,10 +87,11 @@ def get_or_create_function_token(
         token_data_str = f"{session_id}:{system_functions_id}:{random_str}:{get_taipei_now().isoformat()}"
         txn_token = hashlib.sha256(token_data_str.encode()).hexdigest()
 
-        # Token 資訊
+        # Token 資訊（包含權限）
         token_info = {
             "session_id": session_id,
             "system_functions_id": system_functions_id,
+            "permissions": permissions or {},
             "created_at": get_taipei_now().isoformat(),
             "last_access": get_taipei_now().isoformat()
         }
@@ -178,9 +181,12 @@ def verify_txn_token(
     session_id: str,
     func_code: str,
     one_time_use: bool = False
-) -> bool:
+) -> dict:
     """
     驗證交易令牌 (檢查 session_id 綁定)
+
+    Returns:
+        dict: Token 資訊，包含 permissions
     """
     redis_client = get_redis()
     redis_key = f"{TOKEN_PREFIX}{txn_token}"
@@ -236,7 +242,8 @@ def verify_txn_token(
         except Exception:
             pass
 
-    return True
+    # 回傳 token 資訊（包含權限）
+    return token_info
 
 
 def revoke_txn_token(txn_token: str) -> bool:

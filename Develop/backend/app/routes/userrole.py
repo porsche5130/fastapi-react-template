@@ -11,11 +11,11 @@ from sqlalchemy.sql import func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.core.permissions import check_permission
-from app.models.user_roles import UserRole
+from app.models.userrole import UserRole
 from app.models.user import User
-from app.schemas.user_roles import UserRoleResponse, UserRoleCreate, UserRoleUpdate
+from app.schemas.userrole import UserRoleResponse, UserRoleCreate, UserRoleUpdate
 from app.services.userlog_service import UserLogService
+from app.routes.transaction import require_txn_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -43,19 +43,20 @@ async def get_user_roless(
     is_active: Optional[bool] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("user_roles", "read"))
 ):
     """
     取得使用者角色列表
 
-    此 API 用於選單或下拉選項,所有登入使用者都可以呼叫
+    需要 user_roles 功能的 read 權限
 
     - **skip**: 略過筆數
     - **limit**: 限制筆數
     - **is_active**: 是否啟用 (可選)
     - **search**: 搜尋關鍵字 (角色中英文名稱)
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
     query = db.query(UserRole)
 
@@ -77,16 +78,17 @@ async def get_user_roless(
 async def get_user_roles(
     role_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("user_roles", "read"))
 ):
     """
     取得使用者角色資訊
 
-    此 API 用於查詢角色詳細資訊,所有登入使用者都可以呼叫
+    需要 user_roles 功能的 read 權限
 
     - **role_id**: 角色 ID
 
-    需要提供 Bearer Token
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
 
@@ -103,19 +105,17 @@ async def get_user_roles(
 async def create_user_roles(
     role_data: UserRoleCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("user_roles", "create"))
 ):
     """
     建立使用者角色
 
-    需要提供 Bearer Token 及 user_roles 新增權限
+    需要 user_roles 功能的 create 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "user_roles", "create"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限新增使用者角色"
-        )
+    # Token 已驗證權限，不需要再次檢查
 
     # 檢查角色名稱是否已存在
     existing = db.query(UserRole).filter(
@@ -146,21 +146,19 @@ async def update_user_roles(
     role_id: int,
     role_data: UserRoleUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("user_roles", "update"))
 ):
     """
     更新使用者角色
 
+    需要 user_roles 功能的 update 權限
+
     - **role_id**: 角色 ID
 
-    需要提供 Bearer Token 及 user_roles 修改權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "user_roles", "update"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限修改使用者角色"
-        )
+    # Token 已驗證權限，不需要再次檢查
 
     # 查詢角色
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
@@ -206,21 +204,20 @@ async def update_user_roles(
 async def delete_user_roles(
     role_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("user_roles", "delete", one_time_use=True))
 ):
     """
-    刪除使用者角色（軟刪除，設定 is_active = False）
+    刪除使用者角色（真正刪除）
+
+    需要 user_roles 功能的 delete 權限
+    此操作為一次性使用，Token 使用後立即失效
 
     - **role_id**: 角色 ID
 
-    需要提供 Bearer Token 及 user_roles 刪除權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "user_roles", "delete"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限刪除使用者角色"
-        )
+    # Token 已驗證權限，不需要再次檢查
 
     # 查詢角色
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
