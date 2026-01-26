@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
 from fastapi import HTTPException, status
 
-from app.models.sequence_rules import SequenceRule, SequenceValue
+from app.models.numberingrule import SequenceRule, SequenceValue
 
 logger = logging.getLogger(__name__)
 

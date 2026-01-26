@@ -15,8 +15,8 @@ from app.core.deps import get_current_user
 from app.core.permissions import require_permission
 from app.routes.transaction import require_txn_token
 from app.models.user import User
-from app.models.sequence_rules import SequenceRule, SequenceValue
-from app.schemas.sequence_rules import (
+from app.models.numberingrule import SequenceRule, SequenceValue
+from app.schemas.numberingrule import (
     SequenceRuleCreate,
     SequenceRuleUpdate,
     SequenceRuleResponse,

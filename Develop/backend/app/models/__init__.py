@@ -12,7 +12,7 @@ from app.models.userlog import UserLog
 from app.models.systemcode import SystemCode
 from app.models.roleright import RoleRight
 from app.models.systemnotification import SystemNotification
-from app.models.sequence_rules import SequenceRule, SequenceValue
+from app.models.numberingrule import SequenceRule, SequenceValue
 from app.models.fileattachment import FileAttachment
 
 __all__ = [
