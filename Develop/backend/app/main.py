@@ -5,16 +5,20 @@ FastAPI 主應用程式
 
 import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 from app.core.config import settings
 from app.core.redis_client import init_redis, close_redis, redis_health_check
 from app.routes import (
     auth, system, organization, sys_profile,
     users, permissions,
     systemcode, system_functions, system_notifications,
-    user_roles, role_rights, user_logs, home, transaction
+    user_roles, role_rights, user_logs, home, transaction,
+    numbering_rules, file_attachments
 )
 
 # 配置日誌
@@ -63,6 +67,28 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Exception handlers for better debugging
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """處理請求驗證錯誤，記錄詳細資訊"""
+    logger.error(f"❌ Request Validation Error at {request.url}")
+    logger.error(f"   Errors: {exc.errors()}")
+    logger.error(f"   Body: {exc.body}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.errors(), "body": exc.body}
+    )
+
+@app.exception_handler(ValidationError)
+async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
+    """處理 Pydantic 驗證錯誤（response model）"""
+    logger.error(f"❌ Pydantic Validation Error at {request.url}")
+    logger.error(f"   Errors: {exc.errors()}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.errors()}
+    )
+
 # CORS 設定
 app.add_middleware(
     CORSMiddleware,
@@ -105,6 +131,12 @@ app.include_router(permissions.router, prefix="/api/permissions", tags=["權限�
 app.include_router(user_logs.router, prefix="/api/user_logs", tags=["使用者日誌"])
 
 app.include_router(systemcode.router, prefix="/api/system_codes", tags=["系統代碼管理"])
+
+# 編號規則管理
+app.include_router(numbering_rules.router, prefix="/api/numbering-rules", tags=["編號規則設定"])
+
+# 檔案附件管理
+app.include_router(file_attachments.router, prefix="/api/file-attachments", tags=["檔案附件管理"])
 
 @app.get("/", tags=["根路徑"])
 async def root():

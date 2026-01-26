@@ -14,12 +14,14 @@ import {
 } from '../services/roleRightsService';
 import { getUserRoles, UserRole } from '../services/userRoleService';
 import { useFunctionName } from '../hooks/useFunctionName';
+import { usePermission } from '../hooks/usePermission';
 import { logView, logUpdate } from '../utils/userLogHelper';
 import '../styles/RoleRightsPage.css';
 
 const RoleRightsPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const pageTitle = useFunctionName('role_rights');
+  const { hasPermission, loading: permissionLoading } = usePermission();
 
   // 狀態管理
   const [roles, setRoles] = useState<UserRole[]>([]);
@@ -30,6 +32,9 @@ const RoleRightsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const hasLoadedRef = useRef(false);
   const hasInitialized = useRef(false);
+
+  // 檢查使用者對 role_rights 的權限
+  const canUpdate = hasPermission('role_rights', 'update');
 
   // 載入角色清單
   useEffect(() => {
@@ -175,6 +180,12 @@ const RoleRightsPage: React.FC = () => {
       return;
     }
 
+    // 檢查是否有修改權限
+    if (!canUpdate) {
+      alert(t('common.noUpdatePermission') || '您只有讀取權限，無法修改');
+      return;
+    }
+
     // 準備舊資料和新資料用於日誌記錄
     const oldData = {
       role_id: selectedRoleId,
@@ -201,6 +212,9 @@ const RoleRightsPage: React.FC = () => {
         console.error('[RoleRightsPage] Failed to log success:', logErr);
         // 日誌失敗不影響主要功能
       }
+
+      // 重新載入功能列表，以顯示最新的功能
+      await loadFunctions(selectedRoleId);
 
       alert(t('roleRight.saveSuccess'));
 
@@ -259,14 +273,14 @@ const RoleRightsPage: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={right?.is_create || false}
-                  disabled={isRequiredFunc || !func.available_permissions.create || !selectedRoleId}
+                  disabled={!canUpdate || isRequiredFunc || !func.available_permissions.create || !selectedRoleId}
                   onChange={(e) => handlePermissionChange(
                     func.id,
                     func.func_code,
                     'is_create',
                     e.target.checked
                   )}
-                  title={isRequiredFunc ? '必要功能，不可修改' : ''}
+                  title={!canUpdate ? '無修改權限' : isRequiredFunc ? '必要功能，不可修改' : ''}
                 />
               </td>
 
@@ -275,14 +289,14 @@ const RoleRightsPage: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={right?.is_read || false}
-                  disabled={isRequiredFunc || !func.available_permissions.read || !selectedRoleId}
+                  disabled={!canUpdate || isRequiredFunc || !func.available_permissions.read || !selectedRoleId}
                   onChange={(e) => handlePermissionChange(
                     func.id,
                     func.func_code,
                     'is_read',
                     e.target.checked
                   )}
-                  title={isRequiredFunc ? '必要功能，不可修改' : ''}
+                  title={!canUpdate ? '無修改權限' : isRequiredFunc ? '必要功能，不可修改' : ''}
                 />
               </td>
 
@@ -291,14 +305,14 @@ const RoleRightsPage: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={right?.is_update || false}
-                  disabled={isRequiredFunc || !func.available_permissions.update || !selectedRoleId}
+                  disabled={!canUpdate || isRequiredFunc || !func.available_permissions.update || !selectedRoleId}
                   onChange={(e) => handlePermissionChange(
                     func.id,
                     func.func_code,
                     'is_update',
                     e.target.checked
                   )}
-                  title={isRequiredFunc ? '必要功能，不可修改' : ''}
+                  title={!canUpdate ? '無修改權限' : isRequiredFunc ? '必要功能，不可修改' : ''}
                 />
               </td>
 
@@ -307,14 +321,14 @@ const RoleRightsPage: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={right?.is_delete || false}
-                  disabled={isRequiredFunc || !func.available_permissions.delete || !selectedRoleId}
+                  disabled={!canUpdate || isRequiredFunc || !func.available_permissions.delete || !selectedRoleId}
                   onChange={(e) => handlePermissionChange(
                     func.id,
                     func.func_code,
                     'is_delete',
                     e.target.checked
                   )}
-                  title={isRequiredFunc ? '必要功能，不可修改' : ''}
+                  title={!canUpdate ? '無修改權限' : isRequiredFunc ? '必要功能，不可修改' : ''}
                 />
               </td>
 
@@ -323,14 +337,14 @@ const RoleRightsPage: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={right?.is_print || false}
-                  disabled={isRequiredFunc || !func.available_permissions.print || !selectedRoleId}
+                  disabled={!canUpdate || isRequiredFunc || !func.available_permissions.print || !selectedRoleId}
                   onChange={(e) => handlePermissionChange(
                     func.id,
                     func.func_code,
                     'is_print',
                     e.target.checked
                   )}
-                  title={isRequiredFunc ? '必要功能，不可修改' : ''}
+                  title={!canUpdate ? '無修改權限' : isRequiredFunc ? '必要功能，不可修改' : ''}
                 />
               </td>
 
@@ -339,14 +353,14 @@ const RoleRightsPage: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={right?.is_file || false}
-                  disabled={isRequiredFunc || !func.available_permissions.file || !selectedRoleId}
+                  disabled={!canUpdate || isRequiredFunc || !func.available_permissions.file || !selectedRoleId}
                   onChange={(e) => handlePermissionChange(
                     func.id,
                     func.func_code,
                     'is_file',
                     e.target.checked
                   )}
-                  title={isRequiredFunc ? '必要功能，不可修改' : ''}
+                  title={!canUpdate ? '無修改權限' : isRequiredFunc ? '必要功能，不可修改' : ''}
                 />
               </td>
             </tr>
@@ -410,9 +424,14 @@ const RoleRightsPage: React.FC = () => {
       {/* 操作按鈕 */}
       {selectedRoleId && (
         <div className="action-buttons">
-          <button onClick={handleSave} disabled={loading}>
+          <button onClick={handleSave} disabled={!canUpdate || loading}>
             {loading ? t('common.saving') : t('common.save')}
           </button>
+          {!canUpdate && (
+            <p className="permission-warning" style={{ color: 'red', marginTop: '10px' }}>
+              {t('common.noUpdatePermission') || '您只有讀取權限，無法修改'}
+            </p>
+          )}
         </div>
       )}
     </div>

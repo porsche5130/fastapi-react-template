@@ -18,7 +18,8 @@ const axiosInstance = axios.create({
 // 請求攔截器 - 自動加入 Token
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
+    // 優先使用 session_id (新版)，降級使用 access_token (舊版)
+    const token = localStorage.getItem('session_id') || localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -38,6 +39,7 @@ axiosInstance.interceptors.response.use(
     if (error.response) {
       // 401 未授權 - 清除 Token 並跳轉登入頁
       if (error.response.status === 401) {
+        localStorage.removeItem('session_id');
         localStorage.removeItem('access_token');
         window.location.href = '/login';
       }

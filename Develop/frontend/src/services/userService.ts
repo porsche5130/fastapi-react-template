@@ -98,8 +98,39 @@ export const deleteUser = async (userId: number): Promise<void> => {
 };
 
 /**
- * 修改密碼
+ * 取得當前使用者的個人資料
  */
-export const changePassword = async (userId: number, data: PasswordChange): Promise<void> => {
-  await axios.post(`/api/users/${userId}/change-password`, data);
+export const getMyProfile = async (): Promise<UserDetail> => {
+  const response = await axios.get('/api/users/me');
+  return response.data;
+};
+
+/**
+ * 更新當前使用者的個人資料
+ */
+export const updateMyProfile = async (
+  data: Partial<UserDetailUpdate>,
+  txnToken: string
+): Promise<UserDetail> => {
+  const response = await axios.put('/api/users/me', data, {
+    headers: {
+      'X-Txn-Token': txnToken
+    }
+  });
+  return response.data;
+};
+
+/**
+ * 修改當前使用者的密碼
+ */
+export const changePassword = async (
+  userId: number,
+  data: PasswordChange,
+  txnToken: string
+): Promise<void> => {
+  await axios.post(`/api/users/${userId}/change-password`, data, {
+    headers: {
+      'X-Txn-Token': txnToken
+    }
+  });
 };

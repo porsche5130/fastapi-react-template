@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.models.user import User
+from app.services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
 
@@ -53,42 +54,85 @@ def get_current_user(
     if payload is None:
         raise credentials_exception
 
-    user_id_str: Optional[str] = payload.get("sub")
-    if user_id_str is None:
-        raise credentials_exception
-
-    # 從 payload 提取 session_id 並存入 context
+    # 從 Token 取得 session_id
     session_id = payload.get("session_id")
-    logger.info(f"Token payload session_id: {session_id}")
-    if session_id:
-        session_id_ctx.set(session_id)
-        logger.info(f"Set session_id to context: {session_id}")
-    else:
-        # 如果 token 中沒有 session_id（舊 token），產生臨時的 session_id
-        temp_session_id = f"legacy-{uuid.uuid4()}"
-        session_id_ctx.set(temp_session_id)
-        logger.warning(f"JWT token 中沒有 session_id, 使用臨時 session_id: {temp_session_id}")
+    if not session_id:
+        # 相容舊版 Token（含 sub 欄位）
+        user_id_str = payload.get("sub")
+        if user_id_str:
+            logger.warning(f"使用舊版 Token (含 user_id)，建議重新登入")
+            # 產生臨時 session_id
+            session_id = f"legacy-{uuid.uuid4()}"
+            session_id_ctx.set(session_id)
 
-    try:
-        user_id = int(user_id_str)
-    except (ValueError, TypeError):
+            try:
+                user_id = int(user_id_str)
+            except (ValueError, TypeError):
+                raise credentials_exception
+
+            # 從資料庫查詢使用者（舊版流程）
+            user = db.query(User).filter(User.id == user_id).first()
+            if user is None:
+                raise credentials_exception
+            if not user.is_active:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="帳號已停用"
+                )
+
+            user.current_session_id = session_id
+            return user
+        else:
+            raise credentials_exception
+
+    # 設定 session_id 到 context
+    session_id_ctx.set(session_id)
+    logger.debug(f"Token session_id: {session_id}")
+
+    # 從 Redis 取得 Session 資料
+    session_data = SessionService.get_session(session_id)
+    if not session_data:
+        logger.warning(f"Session 不存在或已過期: {session_id}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session 已過期，請重新登入",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 從 Session 資料取得 user_id
+    user_id = session_data.get("user_id")
+    if not user_id:
+        logger.error(f"Session 資料異常，缺少 user_id: {session_id}")
         raise credentials_exception
 
-    # 從資料庫查詢使用者
+    # 從資料庫查詢使用者（確保資料庫與 Session 同步）
     user = db.query(User).filter(User.id == user_id).first()
-
     if user is None:
+        logger.warning(f"使用者不存在: {user_id}")
+        # 刪除無效的 Session
+        SessionService.delete_session(session_id)
         raise credentials_exception
 
     if not user.is_active:
+        logger.warning(f"帳號已停用: {user_id}")
+        # 刪除已停用使用者的 Session
+        SessionService.delete_session(session_id)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="帳號已停用"
         )
 
-    # 將 session_id 附加到 user 物件上（作為臨時屬性，方便後續日誌記錄使用）
-    user.current_session_id = session_id_ctx.get()
-    logger.info(f"Attached session_id to user object: {user.current_session_id}")
+    # 將 Session 中的角色資料同步到 User 物件（確保使用最新權限）
+    # 這樣可以在修改角色後立即生效，而不需等資料庫更新
+    session_role_ids = session_data.get("role_ids", [])
+    if session_role_ids:
+        user.user_role = session_role_ids
+        logger.debug(f"使用 Session 中的角色資料: {session_role_ids}")
+
+    # 將 session_id 附加到 user 物件上（用於日誌記錄）
+    user.current_session_id = session_id
+
+    logger.debug(f"✅ 使用者驗證成功: {user.username} (ID: {user.id}, Roles: {user.user_role})")
 
     return user
 

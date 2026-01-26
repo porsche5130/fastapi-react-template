@@ -456,12 +456,12 @@ const UserLogsPage: React.FC = () => {
       {/* 詳情 Modal */}
       {showDetailModal && selectedLog && (
         <div className="modal-overlay" onClick={handleCloseDetail}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '85vh', overflow: 'auto' }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{t('userLogs.detail.title')}</h2>
-              <button className="close-button" onClick={handleCloseDetail}>×</button>
+              <h2>📋 {t('userLogs.detail.title')}</h2>
+              <button className="modal-close" onClick={handleCloseDetail}>×</button>
             </div>
-            <div className="modal-body" style={{ padding: '24px' }}>
+            <div className="modal-body">
               {/* 基本資訊卡片 */}
               <div style={{
                 backgroundColor: '#f8f9fa',
@@ -675,7 +675,7 @@ const UserLogsPage: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="modal-footer" style={{ padding: '16px 24px', backgroundColor: '#f8f9fa', borderTop: '1px solid #dee2e6' }}>
+            <div className="modal-actions">
               <button onClick={handleCloseDetail} className="btn-secondary" style={{ minWidth: '100px' }}>
                 {t('common.close')}
               </button>

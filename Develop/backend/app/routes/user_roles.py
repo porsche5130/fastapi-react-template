@@ -48,20 +48,15 @@ async def get_user_roless(
     """
     取得使用者角色列表
 
+    此 API 用於選單或下拉選項,所有登入使用者都可以呼叫
+
     - **skip**: 略過筆數
     - **limit**: 限制筆數
     - **is_active**: 是否啟用 (可選)
     - **search**: 搜尋關鍵字 (角色中英文名稱)
 
-    需要提供 Bearer Token 及 user_roles 讀取權限
+    需要提供 Bearer Token
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "user_roles", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取使用者角色"
-        )
-
     query = db.query(UserRole)
 
     if is_active is not None:
@@ -87,17 +82,12 @@ async def get_user_roles(
     """
     取得使用者角色資訊
 
+    此 API 用於查詢角色詳細資訊,所有登入使用者都可以呼叫
+
     - **role_id**: 角色 ID
 
-    需要提供 Bearer Token 及 user_roles 讀取權限
+    需要提供 Bearer Token
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "user_roles", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取使用者角色"
-        )
-
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
 
     if not role:

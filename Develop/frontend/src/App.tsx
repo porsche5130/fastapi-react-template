@@ -20,7 +20,13 @@ import RoleRightsPage from './pages/RoleRightsPage';
 import UserLogsPage from './pages/UserLogsPage';
 import SystemCodesPage from './pages/SystemCodesPage';
 import SystemNotificationsPage from './pages/SystemNotificationsPage';
+import NumberingRulesPage from './pages/NumberingRulesPage';
+import FileAttachmentsPage from './pages/FileAttachmentsPage';
+import TenantProfilePage from './pages/TenantProfilePage';
+import TenantUsersPage from './pages/TenantUsersPage';
 import HomePage from './pages/HomePage';
+import MyProfilePage from './pages/MyProfilePage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 import MainLayout from './components/MainLayout';
 import PrivateRoute from './components/PrivateRoute';
 
@@ -80,10 +86,20 @@ const AppRoutes: React.FC = () => {
         {/* 系統功能管理 */}
         <Route path="system_functions" element={<SystemFunctionsPage />} />
         <Route path="org_profile" element={<div>組織資料檔案</div>} />
+        <Route path="tenant_profile" element={<TenantProfilePage />} />
+        <Route path="tenant_users" element={<TenantUsersPage />} />
         <Route path="role_rights" element={<RoleRightsPage />} />
         <Route path="user_logs" element={<UserLogsPage />} />
         <Route path="system_codes" element={<SystemCodesPage />} />
         <Route path="system_notifications" element={<SystemNotificationsPage />} />
+        {/* 編號規則設定 */}
+        <Route path="numbering_rules" element={<NumberingRulesPage />} />
+        {/* 檔案附件管理 */}
+        <Route path="file_attachments" element={<FileAttachmentsPage />} />
+        {/* 個人資料變更 */}
+        <Route path="my_profile" element={<MyProfilePage />} />
+        {/* 密碼變更 */}
+        <Route path="change_password" element={<ChangePasswordPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

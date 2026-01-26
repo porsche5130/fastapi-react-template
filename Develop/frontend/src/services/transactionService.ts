@@ -89,3 +89,12 @@ export const withTxnToken = (txnToken: string) => {
     }
   };
 };
+
+const transactionService = {
+  requestTransactionToken,
+  getTokenInfo,
+  revokeTransactionToken,
+  withTxnToken,
+};
+
+export default transactionService;

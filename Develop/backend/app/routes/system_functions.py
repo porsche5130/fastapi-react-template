@@ -73,15 +73,10 @@ async def get_functions(
     """
     取得系統功能列表
 
-    需要提供 Bearer Token 及 system_functions 讀取權限
-    """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_functions", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取系統功能"
-        )
+    此 API 用於生成選單,所有登入使用者都可以呼叫
 
+    需要提供 Bearer Token
+    """
     query = db.query(SystemFunction)
 
     if is_active is not None:
@@ -111,15 +106,10 @@ async def get_functions_tree(
     """
     取得系統功能樹狀結構
 
-    需要提供 Bearer Token 及 system_functions 讀取權限
-    """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_functions", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取系統功能"
-        )
+    此 API 用於生成選單,所有登入使用者都可以呼叫
 
+    需要提供 Bearer Token
+    """
     query = db.query(SystemFunction)
 
     if is_active is not None:
@@ -133,6 +123,36 @@ async def get_functions_tree(
     return tree
 
 
+@router.get("/by-code/{func_code}", response_model=SystemFunctionResponse, summary="根據 func_code 取得系統功能資訊")
+async def get_function_by_code(
+    func_code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    根據 func_code 取得系統功能資訊（包含 module_item）
+
+    此 API 用於前端頁面初始化時取得功能的 module_item
+    module_item 定義了該功能的基本要求（應該提供哪些操作項目）
+
+    前端使用範例:
+    ```typescript
+    const functionInfo = await api.getSystemFunctionByCode("organizations");
+    // functionInfo.module_item = ["create", "read", "update", "delete"]
+    ```
+
+    需要提供 Bearer Token
+    """
+    function = db.query(SystemFunction).filter(SystemFunction.func_code == func_code).first()
+    if not function:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"找不到系統功能: {func_code}"
+        )
+
+    return function
+
+
 @router.get("/{function_id}", response_model=SystemFunctionResponse, summary="取得系統功能資訊")
 async def get_function(
     function_id: int,
@@ -142,15 +162,10 @@ async def get_function(
     """
     取得系統功能資訊
 
-    需要提供 Bearer Token 及 system_functions 讀取權限
-    """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_functions", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取系統功能"
-        )
+    此 API 用於查詢功能詳細資訊,所有登入使用者都可以呼叫
 
+    需要提供 Bearer Token
+    """
     function = db.query(SystemFunction).filter(SystemFunction.id == function_id).first()
     if not function:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="找不到系統功能")

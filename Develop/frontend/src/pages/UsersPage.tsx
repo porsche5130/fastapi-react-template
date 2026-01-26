@@ -395,12 +395,12 @@ const UsersPage: React.FC = () => {
                     </td>
                     <td className="actions">
                       {canUpdate && (
-                        <button className="btn-edit" onClick={() => openModal(user, false)}>
+                        <button className="btn-edit" onClick={() => openModal(user, false)} style={{ marginRight: '12px' }}>
                           {t('common.edit')}
                         </button>
                       )}
                       {!canUpdate && hasPermission('users', 'read') && (
-                        <button className="btn-secondary" onClick={() => openModal(user, true)}>
+                        <button className="btn-secondary" onClick={() => openModal(user, true)} style={{ marginRight: '12px' }}>
                           {t('common.view')}
                         </button>
                       )}
@@ -507,12 +507,13 @@ const UsersPage: React.FC = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>
-                {pageTitle} - {isViewMode ? t('common.viewOperation') : (editingUser ? t('common.editOperation') : t('common.createOperation'))}
+                👤 {pageTitle} - {isViewMode ? t('common.viewOperation') : (editingUser ? t('common.editOperation') : t('common.createOperation'))}
               </h2>
               <button className="modal-close" onClick={closeModal}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>
-              <div className="form-grid">
+              <div className="modal-body">
+                <div className="form-grid">
                 <div className="form-group">
                   <label>{t('users.account')} *</label>
                   <input
@@ -620,6 +621,7 @@ const UsersPage: React.FC = () => {
                     {t('common.active')}
                   </label>
                 </div>
+              </div>
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={closeModal}>

@@ -72,6 +72,15 @@ test_*.py
 fix_*.py
 show_*.py
 
+# Development tools (不部署到生產環境)
+/DevTools/
+
+# Database backups (不部署到生產環境)
+Develop/backend/backups/
+
+# Design documents (不部署到生產環境)
+/系統設計/
+
 # Shared data (uploads, images)
 Develop/backend/sharedata/uploads/*
 Develop/backend/sharedata/images/*

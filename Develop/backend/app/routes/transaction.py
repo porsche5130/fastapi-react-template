@@ -63,10 +63,13 @@ async def request_transaction_token(
     current_user: User = Depends(get_current_user)
 ):
     """
-    申請功能交易令牌
+    申請功能交易令牌（自動管理機制）
 
     使用者進入某個功能頁面時,申請該功能的交易令牌。
-    Token 綁定功能,功能綁定使用者在該功能的所有權限。
+    - 如果該 session + function 已有有效 token,自動延長到 30 分鐘
+    - 如果沒有或已過期,建立新的 token,有效期 30 分鐘
+
+    Token 綁定 session_id + system_functions_id,功能綁定使用者權限。
 
     - **func_code**: 功能代碼
 
@@ -83,7 +86,7 @@ async def request_transaction_token(
         2. 後端回應:
            {
                "txn_token": "abc123...",
-               "expires_in": 900,
+               "expires_in": 1800,
                "func_code": "role_rights",
                "permissions": {
                    "create": false,
@@ -99,6 +102,14 @@ async def request_transaction_token(
         4. 所有操作都帶著這個 txn_token
     """
     func_code = request.func_code
+
+    # 取得 session_id
+    session_id = getattr(current_user, 'current_session_id', None)
+    if not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="無法取得 Session ID,請重新登入"
+        )
 
     # 檢查使用者是否有該功能的任何權限
     permissions = {
@@ -122,28 +133,41 @@ async def request_transaction_token(
             detail=f"無權限使用功能: {func_code}"
         )
 
-    # 生成交易令牌 (綁定 session_id, 不是 user_id!)
-    session_id = getattr(current_user, 'current_session_id', None)
-    if not session_id:
+    # 取得 system_function_id
+    from app.models.system_functions import SystemFunction
+    system_function = db.query(SystemFunction).filter(
+        SystemFunction.func_code == func_code
+    ).first()
+
+    if not system_function:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="無法取得 Session ID,請重新登入"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"系統功能不存在: {func_code}"
         )
 
-    txn_token = generate_txn_token(
+    # 使用新的自動管理機制: 取得或建立 Token（自動延長）
+    from app.core.transaction_token_redis import get_or_create_function_token
+
+    txn_token = get_or_create_function_token(
         session_id=session_id,
-        func_code=func_code,
-        valid_minutes=15
+        system_functions_id=system_function.id,
+        valid_minutes=30  # 改為 30 分鐘
     )
+
+    if not txn_token:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="無法建立交易令牌,請稍後再試"
+        )
 
     logger.info(
         f"[Transaction Token] 使用者 {current_user.id} ({current_user.username}) "
-        f"申請功能 {func_code} 的交易令牌,權限: {permissions}"
+        f"取得功能 {func_code} (ID: {system_function.id}) 的交易令牌,權限: {permissions}"
     )
 
     return TokenResponse(
         txn_token=txn_token,
-        expires_in=15 * 60,  # 15 分鐘 = 900 秒
+        expires_in=30 * 60,  # 30 分鐘 = 1800 秒
         func_code=func_code,
         permissions=permissions
     )

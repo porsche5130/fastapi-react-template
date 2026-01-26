@@ -75,7 +75,32 @@
       "Bash(ren:*)",
       "Bash(npx tsc:*)",
       "Bash(npx eslint:*)",
-      "Bash(exit 0)"
+      "Bash(exit 0)",
+      "Bash(if not exist \"Develop\\\\backend\\\\backups\" mkdir \"Develop\\\\backend\\\\backups\")",
+      "Bash(\"C:\\\\Program Files\\\\PostgreSQL\\\\16\\\\bin\\\\pg_dump.exe\" -h localhost -p 5432 -U dev -F c -b -v -f \"backups\\\\pa64_dev_backup_%date:~0,4%%date:~5,2%%date:~8,2%_%time:~0,2%%time:~3,2%%time:~6,2%.backup\" pa64_dev)",
+      "Bash(docker ps:*)",
+      "Bash(git rm:*)",
+      "Bash(docker stop:*)",
+      "Bash(start cmd:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker inspect:*)",
+      "Bash(docker network:*)",
+      "Bash(set TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwic2Vzc2lvbl9pZCI6IjFlZjcxMGZmLTI2MzktNDA1YS04OGZlLWVjN2NiNjg0NjdlZiIsImV4cCI6MTc2OTIwMjc2OX0.7hK_ShoYaG1Y-sFsRqLW2en2B9j4euXVXr0RRU8WcQA)",
+      "Bash(cmd /c start-redis-commander.bat:*)",
+      "Bash(cmd /c \"taskkill /F /PID 89464\")",
+      "Bash(cmd /c start_dev.bat)",
+      "Bash(node -e:*)",
+      "Bash(npx react-scripts build)",
+      "Bash(npx react-scripts start)",
+      "Bash(awk:*)",
+      "Bash(powershell:*)",
+      "Bash(cmd.exe /c \"taskkill /F /PID 45696 && taskkill /F /PID 88096\")",
+      "Bash(cmd.exe /c \"taskkill /F /IM python.exe /T\")",
+      "Bash(cmd.exe /c \"FOR /F \"\"tokens=5\"\" %P IN \\(''netstat -ano ^| findstr \"\":10181\"\"''\\) DO taskkill /F /PID %P\")",
+      "Bash(./kill_backend.bat)",
+      "Bash(chmod:*)",
+      "Bash(cd:*)"
     ]
   }
 }

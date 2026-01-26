@@ -38,8 +38,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
 
     # CORS
+    # 開發環境允許所有來源,因為已有 session_id + txn_token 三層安全機制
+    # 生產環境應該設定為特定的前端網域
     ALLOWED_ORIGINS: List[str] = Field(
-        default=["http://localhost:10180"]
+        default=["*"]
     )
 
     # File Upload

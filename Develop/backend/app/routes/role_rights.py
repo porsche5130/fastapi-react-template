@@ -194,10 +194,52 @@ async def save_role_rights(
         # 3. Commit 權限變更（不包含日誌，日誌由前端獨立發送）
         db.commit()
 
+        # 4. 更新所有使用該角色的使用者的 Session 授權功能
+        try:
+            from app.models.user import User
+            from app.services.session_service import SessionService
+
+            # 找出所有擁有此角色的使用者
+            users_with_role = db.query(User).filter(
+                User.user_role.contains([role_id])
+            ).all()
+
+            updated_sessions = 0
+            for user in users_with_role:
+                # 取得該使用者目前所有角色的權限
+                all_role_ids = user.user_role if isinstance(user.user_role, list) else []
+
+                # 重新計算授權功能 IDs
+                role_rights = db.query(RoleRight).filter(
+                    RoleRight.user_role_id.in_(all_role_ids),
+                    RoleRight.is_read == True
+                ).all()
+
+                authorized_function_ids = list(set([
+                    rr.system_function_id for rr in role_rights if rr.system_function_id
+                ]))
+
+                # 更新該使用者的所有 Session
+                count = SessionService.update_user_sessions_authorized_functions(
+                    user_id=user.id,
+                    authorized_function_ids=authorized_function_ids
+                )
+                updated_sessions += count
+
+            if updated_sessions > 0:
+                logger.info(
+                    f"角色 {role_id} 權限更新，已同步更新 {updated_sessions} 個使用者 Session"
+                )
+
+        except Exception as e:
+            # Session 更新失敗不影響權限儲存
+            logger.error(f"更新使用者 Sessions 失敗: {e}")
+
         return {
             "message": "權限設定已儲存",
             "role_id": role_id,
-            "rights_count": len(batch_data.rights)
+            "rights_count": len(batch_data.rights),
+            "updated_sessions": updated_sessions if 'updated_sessions' in locals() else 0
         }
 
     except Exception as e:

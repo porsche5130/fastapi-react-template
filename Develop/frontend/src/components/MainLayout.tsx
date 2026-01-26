@@ -3,15 +3,52 @@
  * 包含：左側選單、上方使用者資訊、中間內容區、下方版權
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Menu, MenuItem, ListItemIcon, ListItemText, Divider } from '@mui/material';
+import {
+  AccountCircle,
+  Lock,
+  Logout as LogoutIcon,
+  VpnKey,
+  Person,
+  ManageAccounts,
+  Settings,
+  Security
+} from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useSystem } from '../contexts/SystemContext';
+import { getSystemFunctions } from '../services/systemFunctionsService';
+import type { SystemFunction } from '../types/systemFunctions';
 import Sidebar from './Sidebar';
 import LanguageSwitcher from './LanguageSwitcher';
 import Breadcrumb from './Breadcrumb';
 import '../styles/MainLayout.css';
+
+// Material-UI 圖示映射
+const iconMap: Record<string, React.ReactElement> = {
+  'AccountCircle': <AccountCircle fontSize="small" />,
+  'Person': <Person fontSize="small" />,
+  'ManageAccounts': <ManageAccounts fontSize="small" />,
+  'Lock': <Lock fontSize="small" />,
+  'VpnKey': <VpnKey fontSize="small" />,
+  'Security': <Security fontSize="small" />,
+  'Settings': <Settings fontSize="small" />,
+};
+
+// 根據 func_icon 名稱或 emoji 取得對應的顯示內容
+const getIconComponent = (iconName?: string): React.ReactNode => {
+  if (!iconName) return <AccountCircle fontSize="small" />;
+
+  // 如果是 Material-UI 圖示名稱，返回對應的圖示元件
+  if (iconMap[iconName]) {
+    return iconMap[iconName];
+  }
+
+  // 否則直接顯示字串（支援 emoji），字級與 Sidebar 懸浮選單一致
+  return <span style={{ fontSize: '16px' }}>{iconName}</span>;
+};
 
 const MainLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -19,8 +56,67 @@ const MainLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const { systemProfile, getCopyright } = useSystem();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
+
+  // 載入使用者選單功能的中英文名稱
+  const [menuFunctions, setMenuFunctions] = useState<{
+    my_profile?: SystemFunction;
+    change_password?: SystemFunction;
+    logout?: SystemFunction;
+  }>({});
+
+  // 載入功能名稱
+  useEffect(() => {
+    const loadMenuFunctions = async () => {
+      try {
+        // 載入所有活動的系統功能
+        const functions = await getSystemFunctions({
+          is_active: true,
+          limit: 1000
+        });
+
+        // 篩選出需要的功能
+        const functionsMap: Record<string, SystemFunction> = {};
+        functions.forEach(func => {
+          if (func.func_code === 'my_profile' ||
+              func.func_code === 'change_password' ||
+              func.func_code === 'logout') {
+            functionsMap[func.func_code] = func;
+          }
+        });
+
+        console.log('[MainLayout] 載入的選單功能:', functionsMap);
+        setMenuFunctions(functionsMap);
+      } catch (error) {
+        console.error('載入選單功能失敗:', error);
+        // 如果載入失敗，使用預設值（已在 JSX 中提供 fallback）
+      }
+    };
+
+    loadMenuFunctions();
+  }, []);
+
+  const handleUserMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleMyProfile = () => {
+    handleUserMenuClose();
+    navigate('/my_profile');
+  };
+
+  const handleChangePassword = () => {
+    handleUserMenuClose();
+    navigate('/change_password');
+  };
 
   const handleLogout = async () => {
+    handleUserMenuClose();
     try {
       await logout();
       navigate('/login');
@@ -51,7 +147,11 @@ const MainLayout: React.FC = () => {
           </div>
           <div className="header-right">
             <LanguageSwitcher />
-            <div className="user-info">
+            <div
+              className="user-info"
+              onMouseEnter={handleUserMenuClick}
+              style={{ cursor: 'pointer' }}
+            >
               <div className="user-avatar">
                 {user?.username?.charAt(0) || 'U'}
               </div>
@@ -61,10 +161,77 @@ const MainLayout: React.FC = () => {
                   {user?.job_title || user?.department || t('header.userInfo')}
                 </div>
               </div>
-              <button className="logout-button" onClick={handleLogout}>
-                {t('auth.logout')}
-              </button>
             </div>
+            <Menu
+              anchorEl={anchorEl}
+              open={open}
+              onClose={handleUserMenuClose}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              MenuListProps={{
+                onMouseLeave: handleUserMenuClose,
+                style: { pointerEvents: 'auto' }
+              }}
+              slotProps={{
+                paper: {
+                  onMouseEnter: () => {
+                    // 當滑鼠進入選單時，取消任何待關閉的計時器
+                  },
+                  onMouseLeave: handleUserMenuClose,
+                  sx: {
+                    '& .MuiMenuItem-root': {
+                      fontSize: '13px',
+                      padding: '10px 16px',
+                    },
+                    '& .MuiListItemIcon-root': {
+                      minWidth: '36px',
+                    },
+                    '& .MuiListItemText-primary': {
+                      fontSize: '13px',
+                    }
+                  }
+                }
+              }}
+            >
+              <MenuItem onClick={handleMyProfile}>
+                <ListItemIcon>
+                  {getIconComponent(menuFunctions.my_profile?.func_icon)}
+                </ListItemIcon>
+                <ListItemText>
+                  {i18n.language === 'en'
+                    ? (menuFunctions.my_profile?.func_ename || 'My Profile')
+                    : (menuFunctions.my_profile?.func_cname || '個人資料')}
+                </ListItemText>
+              </MenuItem>
+              <MenuItem onClick={handleChangePassword}>
+                <ListItemIcon>
+                  {getIconComponent(menuFunctions.change_password?.func_icon)}
+                </ListItemIcon>
+                <ListItemText>
+                  {i18n.language === 'en'
+                    ? (menuFunctions.change_password?.func_ename || 'Change Password')
+                    : (menuFunctions.change_password?.func_cname || '密碼變更')}
+                </ListItemText>
+              </MenuItem>
+              <Divider />
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon>
+                  {menuFunctions.logout?.func_icon ?
+                    getIconComponent(menuFunctions.logout.func_icon) :
+                    <LogoutIcon fontSize="small" />
+                  }
+                </ListItemIcon>
+                <ListItemText>
+                  {menuFunctions.logout ? (
+                    i18n.language === 'en'
+                      ? (menuFunctions.logout.func_ename || 'Logout')
+                      : (menuFunctions.logout.func_cname || '登出')
+                  ) : (
+                    t('userMenu.logout', '登出')
+                  )}
+                </ListItemText>
+              </MenuItem>
+            </Menu>
           </div>
         </header>
 

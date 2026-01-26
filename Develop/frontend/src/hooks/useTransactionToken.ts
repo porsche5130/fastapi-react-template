@@ -27,6 +27,9 @@ export interface UseTransactionTokenResult {
   requestToken: () => Promise<void>;
   revokeToken: () => Promise<void>;
   refreshToken: () => Promise<void>;
+  extendToken: () => Promise<void>;
+  showExtendPrompt: boolean;
+  handleExtendResponse: (extend: boolean) => Promise<void>;
 }
 
 /**
@@ -47,9 +50,12 @@ export const useTransactionToken = (
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [showExtendPrompt, setShowExtendPrompt] = useState(false);
 
   const hasRequested = useRef(false);
   const checkIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const extendPromptShown = useRef(false);
+  const extendTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // 申請令牌
   const requestToken = useCallback(async () => {
@@ -106,6 +112,47 @@ export const useTransactionToken = (
     await requestToken();
   }, [revokeToken, requestToken]);
 
+  // 延長令牌 (重新申請以延長有效期)
+  const extendToken = useCallback(async () => {
+    if (!funcCode) return;
+
+    try {
+      // 重新申請 token,後端會自動延長現有 token 的 TTL
+      const response = await requestTransactionToken(funcCode);
+
+      setTxnToken(response.txn_token);
+      setPermissions(response.permissions);
+      setRemainingSeconds(response.expires_in);
+      setShowExtendPrompt(false);
+      extendPromptShown.current = false;
+
+      console.log(`[useTransactionToken] 延長令牌成功: ${funcCode}, 已延長 30 分鐘`);
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || err.message || '延長令牌失敗';
+      setError(errorMsg);
+      console.error('[useTransactionToken] 延長令牌失敗:', err);
+    }
+  }, [funcCode]);
+
+  // 處理使用者延長回應
+  const handleExtendResponse = useCallback(async (extend: boolean) => {
+    // 清除自動取消計時器
+    if (extendTimeoutRef.current) {
+      clearTimeout(extendTimeoutRef.current);
+      extendTimeoutRef.current = null;
+    }
+
+    if (extend) {
+      // 使用者選擇延長
+      await extendToken();
+    } else {
+      // 使用者選擇不延長,撤銷 token
+      await revokeToken();
+      setShowExtendPrompt(false);
+      console.log(`[useTransactionToken] 使用者選擇不延長交易時間,已取消交易: ${funcCode}`);
+    }
+  }, [extendToken, revokeToken, funcCode]);
+
   // 定期檢查令牌狀態
   const startTokenCheck = (token: string) => {
     stopTokenCheck();
@@ -115,9 +162,20 @@ export const useTransactionToken = (
         const info = await getTokenInfo(token);
         setRemainingSeconds(info.remaining_seconds);
 
-        // 如果剩餘時間少於 1 分鐘,提醒使用者
-        if (info.remaining_seconds < 60 && info.remaining_seconds > 0) {
-          console.warn(`[useTransactionToken] 令牌即將過期: ${info.remaining_seconds} 秒`);
+        // 如果剩餘時間少於 3 分鐘且尚未顯示提示,詢問使用者是否延長
+        if (info.remaining_seconds < 180 && info.remaining_seconds > 0 && !extendPromptShown.current) {
+          extendPromptShown.current = true;
+          setShowExtendPrompt(true);
+
+          console.warn(`[useTransactionToken] 交易時限將抵達 (剩餘 ${Math.floor(info.remaining_seconds / 60)} 分鐘),詢問使用者是否延長`);
+
+          // 設定 3 分鐘後自動取消交易 (如果使用者沒有回應)
+          extendTimeoutRef.current = setTimeout(async () => {
+            console.warn(`[useTransactionToken] 使用者未回應或時限已超過,自動取消交易: ${funcCode}`);
+            await revokeToken();
+            setShowExtendPrompt(false);
+            extendPromptShown.current = false;
+          }, info.remaining_seconds * 1000); // 剩餘時間後自動取消
         }
 
         // 如果已過期,清除狀態
@@ -125,6 +183,8 @@ export const useTransactionToken = (
           setTxnToken(null);
           setPermissions(null);
           setRemainingSeconds(0);
+          setShowExtendPrompt(false);
+          extendPromptShown.current = false;
           stopTokenCheck();
         }
       } catch (err) {
@@ -132,6 +192,8 @@ export const useTransactionToken = (
         setTxnToken(null);
         setPermissions(null);
         setRemainingSeconds(0);
+        setShowExtendPrompt(false);
+        extendPromptShown.current = false;
         stopTokenCheck();
       }
     }, 30000); // 每 30 秒檢查一次
@@ -142,6 +204,10 @@ export const useTransactionToken = (
     if (checkIntervalRef.current) {
       clearInterval(checkIntervalRef.current);
       checkIntervalRef.current = null;
+    }
+    if (extendTimeoutRef.current) {
+      clearTimeout(extendTimeoutRef.current);
+      extendTimeoutRef.current = null;
     }
   };
 
@@ -197,6 +263,9 @@ export const useTransactionToken = (
     remainingSeconds,
     requestToken,
     revokeToken,
-    refreshToken
+    refreshToken,
+    extendToken,
+    showExtendPrompt,
+    handleExtendResponse
   };
 };

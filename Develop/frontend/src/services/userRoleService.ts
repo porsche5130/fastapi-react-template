@@ -51,7 +51,7 @@ export const getUserRoles = async (params?: GetUserRolesParams): Promise<UserRol
  * 取得使用者角色資訊
  */
 export const getUserRole = async (roleId: number): Promise<UserRole> => {
-  const response = await axios.get(`/api/user_role/${roleId}`);
+  const response = await axios.get(`/api/user_roles/${roleId}`);
   return response.data;
 };
 
@@ -67,7 +67,7 @@ export const createUserRole = async (data: UserRoleCreate): Promise<UserRole> =>
  * 更新使用者角色
  */
 export const updateUserRole = async (roleId: number, data: UserRoleUpdate): Promise<UserRole> => {
-  const response = await axios.put(`/api/user_role/${roleId}`, data);
+  const response = await axios.put(`/api/user_roles/${roleId}`, data);
   return response.data;
 };
 
@@ -75,5 +75,5 @@ export const updateUserRole = async (roleId: number, data: UserRoleUpdate): Prom
  * 刪除使用者角色
  */
 export const deleteUserRole = async (roleId: number): Promise<void> => {
-  await axios.delete(`/api/user_role/${roleId}`);
+  await axios.delete(`/api/user_roles/${roleId}`);
 };

@@ -22,6 +22,7 @@ import {
   closeNotificationsToday,
   SystemNotification
 } from '../services/systemNotificationsService';
+import { logView } from '../utils/userLogHelper';
 import '../styles/DashboardPage.css';
 
 const DashboardPage: React.FC = () => {
@@ -39,7 +40,17 @@ const DashboardPage: React.FC = () => {
   // 載入今日通知
   useEffect(() => {
     console.log('DashboardPage mounted, loading notifications...');
-    loadTodayNotifications();
+    const initPage = async () => {
+      await loadTodayNotifications();
+      // 記錄瀏覽日誌
+      try {
+        await logView('dashboard', { action: 'view_dashboard' });
+      } catch (logErr) {
+        console.error('[DashboardPage] Failed to log view:', logErr);
+      }
+    };
+    initPage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadTodayNotifications = async () => {

@@ -532,34 +532,22 @@ const SystemCodesPage: React.FC = () => {
                     {code.is_active ? t('common.active') : t('common.inactive')}
                   </span>
                 </td>
-                <td>
-                  <div className="action-buttons">
-                    <button
-                      className="btn-view"
-                      onClick={() => openModal(code, true)}
-                      title={t('common.view')}
-                    >
+                <td className="actions">
+                  {canUpdate && (
+                    <button className="btn-edit" onClick={() => openModal(code, false)} style={{ marginRight: '12px' }}>
+                      {t('common.edit')}
+                    </button>
+                  )}
+                  {!canUpdate && hasPermission('system_codes', 'read') && (
+                    <button className="btn-secondary" onClick={() => openModal(code, true)} style={{ marginRight: '12px' }}>
                       {t('common.view')}
                     </button>
-                    {canUpdate && (
-                      <button
-                        className="btn-edit"
-                        onClick={() => openModal(code, false)}
-                        title={t('common.edit')}
-                      >
-                        {t('common.edit')}
-                      </button>
-                    )}
-                    {canDelete && (
-                      <button
-                        className="btn-delete"
-                        onClick={() => handleDelete(code)}
-                        title={t('common.delete')}
-                      >
-                        {t('common.delete')}
-                      </button>
-                    )}
-                  </div>
+                  )}
+                  {canDelete && (
+                    <button className="btn-delete" onClick={() => handleDelete(code)}>
+                      {t('common.delete')}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -571,37 +559,63 @@ const SystemCodesPage: React.FC = () => {
         )}
 
         {filteredCodes.length > 0 && (
-          <div className="pagination">
+          <div className="pagination-container">
             <div className="pagination-info">
-              {t('common.showing')} {startIndex + 1} - {Math.min(endIndex, filteredCodes.length)} {t('common.of')} {filteredCodes.length}
+              <label>
+                {t('systemCodes.itemsPerPage')}：
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                {t('systemCodes.items')}
+              </label>
+              <span className="pagination-text">
+                {t('systemCodes.totalRecords', {
+                  total: filteredCodes.length,
+                  current: currentPage,
+                  totalPages: totalPages
+                })}
+              </span>
             </div>
-            <div className="pagination-controls">
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-              >
-                <option value={10}>10 / {t('common.page')}</option>
-                <option value={20}>20 / {t('common.page')}</option>
-                <option value={50}>50 / {t('common.page')}</option>
-                <option value={100}>100 / {t('common.page')}</option>
-              </select>
+            <div className="pagination-buttons">
               <button
+                className="btn-pagination"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              >
+                ⟪
+              </button>
+              <button
+                className="btn-pagination"
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
               >
-                {t('common.previous')}
+                ‹
               </button>
-              <span>
-                {t('common.page')} {currentPage} / {totalPages}
-              </span>
+              <button className={`btn-pagination active`}>
+                {currentPage}
+              </button>
               <button
+                className="btn-pagination"
                 onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
               >
-                {t('common.next')}
+                ›
+              </button>
+              <button
+                className="btn-pagination"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                ⟫
               </button>
             </div>
           </div>
@@ -614,7 +628,7 @@ const SystemCodesPage: React.FC = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>
-                {pageTitle} - {isViewMode
+                🔢 {pageTitle} - {isViewMode
                   ? t('common.viewOperation')
                   : editingCode
                   ? t('common.editOperation')
@@ -754,15 +768,15 @@ const SystemCodesPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <div className="modal-footer">
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={closeModal}>
+                  {isViewMode ? t('common.close') : t('common.cancel')}
+                </button>
                 {!isViewMode && (
                   <button type="submit" className="btn-primary">
                     {editingCode ? t('common.save') : t('common.create')}
                   </button>
                 )}
-                <button type="button" className="btn-secondary" onClick={closeModal}>
-                  {isViewMode ? t('common.close') : t('common.cancel')}
-                </button>
               </div>
             </form>
           </div>

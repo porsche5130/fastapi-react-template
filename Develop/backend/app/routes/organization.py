@@ -11,7 +11,7 @@ from sqlalchemy.sql import func
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.core.permissions import check_permission
+from app.core.permissions import check_permission, check_permission_and_manage_token
 from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.organization import OrganizationResponse, OrganizationCreate, OrganizationUpdate
@@ -54,21 +54,23 @@ async def get_organizations(
     """
     取得組織單位列表
 
+    資料層級安全控制:一般使用者只能查看自己的組織
+
     - **skip**: 略過筆數
     - **limit**: 限制筆數
     - **is_active**: 是否啟用 (可選)
     - **search**: 搜尋關鍵字 (組織代碼或名稱)
 
-    需要提供 Bearer Token 及 organizations 讀取權限
+    需要提供 Bearer Token
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "organizations", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取組織設定"
-        )
-
     query = db.query(Organization)
+
+    # 資料層級安全控制:檢查使用者是否有 organizations 管理權限
+    # 如果沒有,只能查看自己的組織
+    has_org_permission = check_permission(db, current_user, "organizations", "read")
+    if not has_org_permission:
+        # 只能查看自己的組織
+        query = query.filter(Organization.id == current_user.organization_id)
 
     if is_active is not None:
         query = query.filter(Organization.is_active == is_active)
@@ -93,23 +95,26 @@ async def get_organization(
     """
     取得組織單位資訊
 
+    資料層級安全控制:一般使用者只能查看自己的組織
+
     - **organization_id**: 組織單位 ID
 
-    需要提供 Bearer Token 及 organizations 讀取權限
+    需要提供 Bearer Token
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "organizations", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取組織設定"
-        )
-
     organization = db.query(Organization).filter(Organization.id == organization_id).first()
 
     if not organization:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="找不到組織單位"
+        )
+
+    # 資料層級安全控制:檢查是否有權限查看此組織
+    has_org_permission = check_permission(db, current_user, "organizations", "read")
+    if not has_org_permission and organization.id != current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="無權限讀取此組織資訊"
         )
 
     return organization
@@ -126,12 +131,8 @@ async def create_organization(
 
     需要提供 Bearer Token 及 organizations 新增權限
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "organizations", "create"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限新增組織設定"
-        )
+    # 檢查權限並自動管理 Transaction Token
+    check_permission_and_manage_token(db, current_user, "organizations", "create")
 
     # 檢查組織代碼是否已存在
     existing = db.query(Organization).filter(Organization.org_code == organization_data.org_code).first()
@@ -168,8 +169,11 @@ async def update_organization(
 
     需要提供 Bearer Token 及 organizations 修改權限
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "organizations", "update"):
+    # 檢查權限並自動管理 Transaction Token
+    check_permission_and_manage_token(db, current_user, "organizations", "update")
+
+    # 原本的錯誤處理邏輯需要移除 check 改為使用上面的函數
+    if False:  # 這段程式碼已被上面的函數取代
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="無權限修改組織設定"

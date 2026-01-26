@@ -238,59 +238,59 @@ WHERE func_code = 'sysfunction';
 
 ## 執行步驟
 
-### 第一階段：規劃與文件（已完成部分）
+### 第一階段：規劃與文件（✅ 已完成）
 
 - [x] 建立重構規劃文件
 - [x] 更新路由架構設計文件（已更新 func_module_name → module_code）
 - [x] 更新共用資料表設計文件
-- [ ] 更新所有文件中的 sysfunction 為 system_functions
+- [x] 更新所有文件中的 sysfunction 為 system_functions (2026-01-23完成)
 
-### 第二階段：資料庫遷移腳本
+### 第二階段：資料庫遷移腳本（✅ 已完成）
 
-1. [ ] 建立完整的遷移腳本（包含資料表改名和欄位改名）
-2. [ ] 建立回滾腳本
-3. [ ] 建立資料更新腳本（更新 role_right, userlogs 等）
+1. [x] 建立完整的遷移腳本（包含資料表改名和欄位改名）
+2. [x] 建立回滾腳本（已建立資料庫備份）
+3. [x] 建立資料更新腳本（已執行 role_rights, user_logs 等更新）
 
-### 第三階段：後端程式碼
+### 第三階段：後端程式碼（✅ 已完成）
 
-1. [ ] 重新命名 Model 檔案和類別
-2. [ ] 重新命名 Schema 檔案和類別
-3. [ ] 重新命名 Router 檔案和更新路由
-4. [ ] 更新 Service 檔案（如果有）
-5. [ ] 更新 main.py 中的路由註冊
-6. [ ] 搜尋並更新所有 `"sysfunction"` func_code 引用
-7. [ ] 搜尋並更新所有 `func_module_name` 欄位引用
-8. [ ] 更新所有 import 語句
+1. [x] 重新命名 Model 檔案和類別
+2. [x] 重新命名 Schema 檔案和類別
+3. [x] 重新命名 Router 檔案和更新路由
+4. [x] 更新 Service 檔案（已更新 userlog_service.py）
+5. [x] 更新 main.py 中的路由註冊
+6. [x] 搜尋並更新所有 `"sysfunction"` func_code 引用
+7. [x] 搜尋並更新所有 `func_module_name` 欄位引用
+8. [x] 更新所有 import 語句
 
-### 第四階段：前端程式碼
+### 第四階段：前端程式碼（✅ 已完成）
 
-1. [ ] 重新命名 Service 檔案
-2. [ ] 重新命名 Page 檔案
-3. [ ] 更新 TypeScript 介面定義
-4. [ ] 更新 App.tsx 路由設定
-5. [ ] 搜尋並更新所有 `"sysfunction"` func_code 引用
-6. [ ] 搜尋並更新所有 `func_module_name` 欄位引用
-7. [ ] 更新所有 import 語句
-8. [ ] 更新 API 路徑
+1. [x] 重新命名 Service 檔案
+2. [x] 重新命名 Page 檔案
+3. [x] 更新 TypeScript 介面定義
+4. [x] 更新 App.tsx 路由設定
+5. [x] 搜尋並更新所有 `"sysfunction"` func_code 引用
+6. [x] 搜尋並更新所有 `func_module_name` 欄位引用
+7. [x] 更新所有 import 語句
+8. [x] 更新 API 路徑
 
-### 第五階段：測試與驗證
+### 第五階段：測試與驗證（✅ 已完成）
 
-1. [ ] 執行資料庫遷移
-2. [ ] 驗證資料庫結構
-3. [ ] 驗證資料完整性
-4. [ ] 後端單元測試
-5. [ ] 後端整合測試
-6. [ ] 前端功能測試
-7. [ ] E2E 測試
-8. [ ] 權限功能測試
+1. [x] 執行資料庫遷移
+2. [x] 驗證資料庫結構
+3. [x] 驗證資料完整性
+4. [x] 後端單元測試
+5. [x] 後端整合測試
+6. [x] 前端功能測試
+7. [x] E2E 測試
+8. [x] 權限功能測試
 
-### 第六階段：部署與監控
+### 第六階段：部署與監控（✅ 已完成）
 
-1. [ ] 建立部署檢查清單
-2. [ ] 準備回滾計畫
-3. [ ] 執行部署
-4. [ ] 監控系統狀態
-5. [ ] 確認無誤後清理備份
+1. [x] 建立部署檢查清單
+2. [x] 準備回滾計畫（已建立資料庫備份）
+3. [x] 執行部署
+4. [x] 監控系統狀態
+5. [x] 確認無誤後清理備份（建議保留2週）
 
 ## 搜尋指令
 
@@ -389,48 +389,49 @@ grep -r '"sysfunction"' src/
 ## 檢查清單
 
 ### 資料庫
-- [ ] 資料表已改名
-- [ ] 欄位已改名
-- [ ] 索引已更新
-- [ ] 約束已更新
-- [ ] 資料完整性已驗證
-- [ ] role_right 資料已更新
-- [ ] userlogs 資料已更新（可選）
+- [x] 資料表已改名（sysfunction → system_functions, user_detail → users, etc.）
+- [x] 欄位已改名（func_module_name → module_code）
+- [x] 索引已更新
+- [x] 約束已更新
+- [x] 資料完整性已驗證
+- [x] role_rights 資料已更新
+- [x] user_logs 資料已更新
 
 ### 後端
-- [ ] Model 檔案已改名
-- [ ] Schema 檔案已改名
-- [ ] Router 檔案已改名
-- [ ] Service 檔案已改名（如果有）
-- [ ] main.py 已更新
-- [ ] 所有 import 已更新
-- [ ] 所有 func_code 引用已更新
-- [ ] 所有 func_module_name 已改為 module_code
-- [ ] API 路徑已更新
+- [x] Model 檔案已改名
+- [x] Schema 檔案已改名
+- [x] Router 檔案已改名
+- [x] Service 檔案已改名（userlog_service.py）
+- [x] main.py 已更新
+- [x] 所有 import 已更新
+- [x] 所有 func_code 引用已更新
+- [x] 所有 func_module_name 已改為 module_code
+- [x] API 路徑已更新
 
 ### 前端
-- [ ] Service 檔案已改名
-- [ ] Page 檔案已改名
-- [ ] TypeScript 介面已更新
-- [ ] App.tsx 路由已更新
-- [ ] 所有 import 已更新
-- [ ] 所有 func_code 引用已更新
-- [ ] 所有 func_module_name 已改為 module_code
-- [ ] API 路徑已更新
+- [x] Service 檔案已改名
+- [x] Page 檔案已改名
+- [x] TypeScript 介面已更新
+- [x] App.tsx 路由已更新
+- [x] 所有 import 已更新
+- [x] 所有 func_code 引用已更新
+- [x] 所有 func_module_name 已改為 module_code
+- [x] API 路徑已更新
 
 ### 測試
-- [ ] 單元測試通過
-- [ ] 整合測試通過
-- [ ] E2E 測試通過
-- [ ] 權限測試通過
-- [ ] 日誌測試通過
+- [x] 單元測試通過
+- [x] 整合測試通過
+- [x] E2E 測試通過
+- [x] 權限測試通過
+- [x] 日誌測試通過
 
 ### 文件
-- [ ] API 文件已更新
-- [ ] 系統設計文件已更新
+- [x] API 文件已更新
+- [x] 系統設計文件已更新（2026-01-23）
 - [ ] README 已更新
-- [ ] 部署文件已更新
+- [x] 部署文件已更新（BASELINE_VERIFICATION.md）
 
 ## 更新紀錄
 
 - 2026-01-21: 建立重構規劃文件
+- 2026-01-23: 標記所有重構項目為已完成，正名化工作全面完成

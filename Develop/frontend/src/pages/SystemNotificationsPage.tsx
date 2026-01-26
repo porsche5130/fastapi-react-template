@@ -19,6 +19,7 @@ import {
   deleteSystemNotification,
   toggleSystemNotificationActive,
 } from '../services/systemNotificationsService';
+import { logView, logCreate, logUpdate, logDelete } from '../utils/userLogHelper';
 import '../styles/DataTable.css';
 
 const SystemNotificationsPage: React.FC = () => {
@@ -70,9 +71,18 @@ const SystemNotificationsPage: React.FC = () => {
   useEffect(() => {
     if (!permissionLoading && hasPermission('system_notifications', 'read') && !hasInitialized.current) {
       hasInitialized.current = true;
-      loadNotifications();
+      const initPage = async () => {
+        try {
+          await loadNotifications();
+          await logView('system_notifications', { search: search || undefined }, null);
+        } catch (err: any) {
+          const errorMsg = err.response?.data?.detail || err.message || t('message.loadFailed');
+          await logView('system_notifications', { search: search || undefined }, errorMsg);
+        }
+      };
+      initPage();
     }
-  }, [permissionLoading, hasPermission, loadNotifications]);
+  }, [permissionLoading, hasPermission, loadNotifications, search, t]);
 
   // Filter and pagination
   const filteredNotifications = notifications.filter((notification) => {
@@ -177,9 +187,24 @@ const SystemNotificationsPage: React.FC = () => {
       await deleteSystemNotification(notification.id);
       alert(t('system_notifications.notificationDeleted'));
       loadNotifications();
-    } catch (error) {
+
+      // 記錄刪除日誌
+      try {
+        await logDelete('system_notifications', notification);
+      } catch (logErr) {
+        console.error('[SystemNotificationsPage] Failed to log delete:', logErr);
+      }
+    } catch (error: any) {
       console.error('Failed to delete notification:', error);
-      alert(t('system_notifications.failedToDeleteNotification'));
+      const errorMsg = t('system_notifications.failedToDeleteNotification');
+      alert(errorMsg);
+
+      // 記錄失敗日誌
+      try {
+        await logDelete('system_notifications', notification, errorMsg);
+      } catch (logErr) {
+        console.error('[SystemNotificationsPage] Failed to log error:', logErr);
+      }
     }
   };
 
@@ -235,17 +260,45 @@ const SystemNotificationsPage: React.FC = () => {
 
     try {
       if (editingNotification) {
-        await updateSystemNotification(editingNotification.id, formData as SystemNotificationUpdate);
+        // 更新操作
+        const updated = await updateSystemNotification(editingNotification.id, formData as SystemNotificationUpdate);
         alert(t('system_notifications.notificationUpdated'));
+
+        // 記錄更新日誌
+        try {
+          await logUpdate('system_notifications', editingNotification, updated);
+        } catch (logErr) {
+          console.error('[SystemNotificationsPage] Failed to log update:', logErr);
+        }
       } else {
-        await createSystemNotification(formData);
+        // 新增操作
+        const created = await createSystemNotification(formData);
         alert(t('system_notifications.notificationCreated'));
+
+        // 記錄新增日誌
+        try {
+          await logCreate('system_notifications', created);
+        } catch (logErr) {
+          console.error('[SystemNotificationsPage] Failed to log create:', logErr);
+        }
       }
       setShowModal(false);
       loadNotifications();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save notification:', error);
-      alert(t('system_notifications.failedToSaveNotification'));
+      const errorMsg = t('system_notifications.failedToSaveNotification');
+      alert(errorMsg);
+
+      // 記錄失敗日誌
+      try {
+        if (editingNotification) {
+          await logUpdate('system_notifications', editingNotification, {}, errorMsg);
+        } else {
+          await logCreate('system_notifications', {}, errorMsg);
+        }
+      } catch (logErr) {
+        console.error('[SystemNotificationsPage] Failed to log error:', logErr);
+      }
     }
   };
 
@@ -477,6 +530,7 @@ const SystemNotificationsPage: React.FC = () => {
                           <button
                             className="btn-edit"
                             onClick={() => handleEdit(notification)}
+                            style={{ marginRight: '12px' }}
                           >
                             {t('common.edit')}
                           </button>
@@ -485,6 +539,7 @@ const SystemNotificationsPage: React.FC = () => {
                           <button
                             className="btn-secondary"
                             onClick={() => handleView(notification)}
+                            style={{ marginRight: '12px' }}
                           >
                             {t('common.view')}
                           </button>

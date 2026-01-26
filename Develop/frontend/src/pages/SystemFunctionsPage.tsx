@@ -19,7 +19,7 @@ import { logView, logCreate, logRead, logUpdate, logDelete } from '../utils/user
 import '../styles/DataTable.css';
 
 const SystemFunctionsPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
   const pageTitle = useFunctionName('system_functions');
   const hasInitialized = useRef(false);
@@ -27,7 +27,7 @@ const SystemFunctionsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [filterUpperFunc] = useState<number | ''>('');
+  const [filterUpperFunc, setFilterUpperFunc] = useState<number | ''>('');
   const [filterFuncType, setFilterFuncType] = useState<number | ''>('');
   const [showOnlyMana, setShowOnlyMana] = useState(false);
   const [sortBy, setSortBy] = useState<'id' | 'func_order'>('id');
@@ -230,10 +230,12 @@ const SystemFunctionsPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 組合 module_item
+    // 組合 module_item，並根據 func_type 處理 module_code
     const submitData = {
       ...formData,
-      module_item: moduleItemActions
+      module_item: moduleItemActions,
+      // 如果是節點類型 (func_type = 1)，則 module_code 必須為 undefined (後端會轉為 NULL)
+      module_code: formData.func_type === 1 ? undefined : formData.module_code
     };
 
     try {
@@ -287,6 +289,30 @@ const SystemFunctionsPage: React.FC = () => {
     }
   };
 
+  /**
+   * 依照語系顯示功能名稱：
+   * 中文語系→中文名稱在上，英文名稱在下
+   * 英文語系→英文名稱在上，中文名稱在下
+   */
+  const renderFunctionName = (func: SystemFunction) => {
+    const isChinese = i18n.language === 'zh-TW';
+    const primary = isChinese ? func.func_cname : (func.func_ename || func.func_cname);
+    const secondary = isChinese ? func.func_ename : func.func_cname;
+
+    if (!secondary || primary === secondary) {
+      return primary;
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <span>{primary}</span>
+        <span style={{ fontSize: '0.85em', color: '#666' }}>
+          {secondary}
+        </span>
+      </div>
+    );
+  };
+
   if (permissionLoading) {
     return (
       <div className="page-container">
@@ -331,7 +357,24 @@ const SystemFunctionsPage: React.FC = () => {
       </div>
 
       {/* 過濾區 */}
-      <div className="filter-bar" style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <div className="filter-bar" style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <select
+          value={filterUpperFunc}
+          onChange={(e) => setFilterUpperFunc(e.target.value === '' ? '' : Number(e.target.value))}
+          style={{ padding: '0.5rem', minWidth: '200px' }}
+        >
+          <option value="">{t('sysFunctions.allUpperFunctions')}</option>
+          <option value="0">{t('sysFunctions.rootLevel')}</option>
+          {functions
+            .filter(f => f.func_type === 1) // 只顯示節點類型
+            .sort((a, b) => a.func_order - b.func_order)
+            .map(func => (
+              <option key={func.id} value={func.id}>
+                {func.func_cname} ({func.func_code})
+              </option>
+            ))}
+        </select>
+
         <select
           value={filterFuncType}
           onChange={(e) => setFilterFuncType(e.target.value === '' ? '' : Number(e.target.value))}
@@ -368,8 +411,7 @@ const SystemFunctionsPage: React.FC = () => {
                     ID {sortBy === 'id' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th>{t('sysFunctions.funcCode')}</th>
-                  <th>{t('sysFunctions.funcCname')}</th>
-                  <th>{t('sysFunctions.funcEname')}</th>
+                  <th>{t('sysFunctions.funcName')}</th>
                   <th>{t('sysFunctions.funcType')}</th>
                   <th onClick={() => handleSort('func_order')}>
                     {t('sysFunctions.funcOrder')} {sortBy === 'func_order' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -384,20 +426,19 @@ const SystemFunctionsPage: React.FC = () => {
                   <tr key={func.id}>
                     <td>{func.id}</td>
                     <td>{func.func_code}</td>
-                    <td>{func.func_cname}</td>
-                    <td>{func.func_ename}</td>
+                    <td>{renderFunctionName(func)}</td>
                     <td>{func.func_type === 1 ? t('sysFunctions.types.node') : t('sysFunctions.types.function')}</td>
                     <td>{func.func_order}</td>
                     <td>{func.module_code || '-'}</td>
                     <td>{func.is_active ? t('common.yes') : t('common.no')}</td>
                     <td className="actions">
                       {hasPermission('system_functions', 'update') && (
-                        <button className="btn-edit" onClick={() => handleEdit(func)}>
+                        <button className="btn-edit" onClick={() => handleEdit(func)} style={{ marginRight: '12px' }}>
                           {t('common.edit')}
                         </button>
                       )}
                       {!hasPermission('system_functions', 'update') && hasPermission('system_functions', 'read') && (
-                        <button className="btn-secondary" onClick={() => handleView(func)}>
+                        <button className="btn-secondary" onClick={() => handleView(func)} style={{ marginRight: '12px' }}>
                           {t('common.view')}
                         </button>
                       )}
@@ -514,7 +555,7 @@ const SystemFunctionsPage: React.FC = () => {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>
-                {pageTitle} - {isViewMode
+                ⚙️ {pageTitle} - {isViewMode
                   ? t('common.viewOperation')
                   : editingFunction
                   ? t('common.editOperation')
@@ -523,7 +564,8 @@ const SystemFunctionsPage: React.FC = () => {
               <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>
-              <div className="form-grid">
+              <div className="modal-body">
+                <div className="form-grid">
                 <div className="form-group">
                   <label>{t('sysFunctions.funcCode')} *</label>
                   <input
@@ -569,7 +611,16 @@ const SystemFunctionsPage: React.FC = () => {
                   <label>{t('sysFunctions.funcType')} *</label>
                   <select
                     value={formData.func_type}
-                    onChange={(e) => setFormData({ ...formData, func_type: Number(e.target.value) })}
+                    onChange={(e) => {
+                      const newType = Number(e.target.value);
+                      // 當切換為節點類型時，清空 module_code 和 module_item
+                      if (newType === 1) {
+                        setFormData({ ...formData, func_type: newType, module_code: '', module_item: [] });
+                        setModuleItemActions([]);
+                      } else {
+                        setFormData({ ...formData, func_type: newType });
+                      }
+                    }}
                     disabled={isViewMode}
                     required
                   >
@@ -619,7 +670,7 @@ const SystemFunctionsPage: React.FC = () => {
 
                 {formData.func_type === 2 && (
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label>{t('sysFunctions.moduleItem')}</label>
+                    <label style={{ marginBottom: '8px', display: 'block' }}>{t('sysFunctions.moduleItem')}</label>
                     <div className="checkbox-group">
                       {['Create', 'Read', 'Update', 'Delete', 'Print', 'File'].map(action => (
                         <label key={action}>
@@ -629,7 +680,7 @@ const SystemFunctionsPage: React.FC = () => {
                             onChange={() => toggleModuleItem(action)}
                             disabled={isViewMode}
                           />
-                          {t(`sysfunction.action.${action.toLowerCase()}`)}
+                          <span>{t(`sysfunction.action.${action.toLowerCase()}`)}</span>
                         </label>
                       ))}
                     </div>
@@ -659,6 +710,7 @@ const SystemFunctionsPage: React.FC = () => {
                     {t('common.isActive')}
                   </label>
                 </div>
+              </div>
               </div>
 
               <div className="modal-actions">

@@ -12,6 +12,8 @@ from app.models.user_logs import UserLog
 from app.models.systemcode import SystemCode
 from app.models.role_rights import RoleRight
 from app.models.system_notification import SystemNotification
+from app.models.sequence_rules import SequenceRule, SequenceValue
+from app.models.file_attachments import FileAttachment
 
 __all__ = [
     "Organization",
@@ -22,5 +24,8 @@ __all__ = [
     "UserLog",
     "SystemCode",
     "RoleRight",
-    "SystemNotification"
+    "SystemNotification",
+    "SequenceRule",
+    "SequenceValue",
+    "FileAttachment"
 ]

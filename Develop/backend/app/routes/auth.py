@@ -16,6 +16,7 @@ from app.models.user import User
 from app.schemas.auth import LoginRequest, Token
 from app.schemas.user import UserProfile
 from app.services.userlog_service import UserLogService
+from app.services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -69,9 +70,41 @@ async def login(
     # 設定 session_id 到 context (用於記錄日誌)
     session_id_ctx.set(session_id)
 
-    # 建立 JWT Token (sub 必須是字串，加入 session_id)
+    # 查詢使用者有權限的功能 IDs (is_read = true)
+    from app.models.role_rights import RoleRight
+    role_ids = user.user_role if isinstance(user.user_role, list) else []
+
+    # 取得使用者所有有讀取權限的功能 IDs
+    authorized_function_ids = []
+    if role_ids:
+        role_rights = db.query(RoleRight).filter(
+            RoleRight.user_role_id.in_(role_ids),
+            RoleRight.is_read == True
+        ).all()
+
+        # 收集所有有權限的 system_function_id (去重)
+        authorized_function_ids = list(set([
+            rr.system_function_id for rr in role_rights if rr.system_function_id
+        ]))
+
+    # 建立 Redis Session（儲存 user_id, role_ids, organization_id, authorized_function_ids 等資料）
+    session_created = SessionService.create_session(
+        session_id=session_id,
+        user_id=user.id,
+        role_ids=role_ids,
+        organization_id=user.organization_id,
+        username=user.username,
+        account=user.account,
+        authorized_function_ids=authorized_function_ids
+    )
+
+    if not session_created:
+        logger.error(f"Redis Session 建立失敗: {session_id}")
+        # Redis 失敗不影響登入，但記錄警告
+        logger.warning("⚠️  Redis 無法使用，Session 將僅依賴 JWT Token")
+
+    # 建立 JWT Token（只放 session_id，不放 user_id）
     access_token = create_access_token(data={
-        "sub": str(user.id),
         "session_id": session_id
     })
 
@@ -116,12 +149,45 @@ async def get_current_user_profile(
 
 @router.post("/logout", summary="使用者登出")
 async def logout(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """
     使用者登出
 
     需要提供 Bearer Token
-    （前端應清除儲存的 Token）
+    刪除 Redis 中的 Session，使 Token 立即失效
     """
-    return {"message": "登出成功"}
+    # 取得 session_id
+    session_id = getattr(current_user, 'current_session_id', None)
+
+    if session_id:
+        # 刪除 Redis Session
+        deleted = SessionService.delete_session(session_id)
+        if deleted:
+            logger.info(f"✅ 使用者登出成功: {current_user.username} (Session: {session_id})")
+
+            # 記錄登出日誌
+            try:
+                function_id = UserLogService.get_function_id_by_code(db, "logout")
+                if function_id:
+                    UserLogService.log_logout(
+                        db=db,
+                        user_id=current_user.id,
+                        function_id=function_id,
+                        logout_info={
+                            "account": current_user.account,
+                            "username": current_user.username,
+                            "session_id": session_id
+                        }
+                    )
+            except Exception as e:
+                logger.error(f"登出日誌記錄失敗: {e}")
+
+            return {"message": "登出成功"}
+        else:
+            logger.warning(f"Session 刪除失敗或不存在: {session_id}")
+            return {"message": "登出成功（Session 已過期）"}
+    else:
+        logger.warning(f"使用者登出但無 session_id: {current_user.username}")
+        return {"message": "登出成功"}
