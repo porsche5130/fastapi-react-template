@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.system_functions import SystemFunction
+from app.models.systemfunction import SystemFunction
 from app.routes.transaction import require_txn_token
 from app.models.user import User
-from app.schemas.system_functions import (
+from app.schemas.systemfunction import (
     SystemFunctionResponse,
     SystemFunctionCreate,
     SystemFunctionUpdate,
@@ -68,17 +68,17 @@ async def get_functions(
     func_type: Optional[int] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _token: None = Depends(require_txn_token("system_functions", "read"))
+    current_user: User = Depends(get_current_user)
 ):
     """
-    取得系統功能列表
+    取得系統功能列表（用於前端初始化）
 
-    需要 system_functions 功能的 read 權限
+    只需要 Bearer Token（登入認證）
 
-    此 API 用於管理系統功能
+    此 API 用於前端載入功能列表，不需要 transaction token
+    前端會在首頁自動呼叫此 API 來顯示可用功能
 
-    需要提供 Bearer Token 及 X-Txn-Token Header
+    需要提供 Bearer Token
     """
     query = db.query(SystemFunction)
 
@@ -104,17 +104,17 @@ async def get_functions(
 async def get_functions_tree(
     is_active: Optional[bool] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _token: None = Depends(require_txn_token("system_functions", "read"))
+    current_user: User = Depends(get_current_user)
 ):
     """
-    取得系統功能樹狀結構
+    取得系統功能樹狀結構（用於選單顯示）
 
-    需要 system_functions 功能的 read 權限
+    只需要 Bearer Token（登入認證）
 
-    此 API 用於管理系統功能
+    此 API 用於前端載入選單，不需要 transaction token
+    因為這是在使用者登入後立即執行的，還沒有進入任何功能頁面
 
-    需要提供 Bearer Token 及 X-Txn-Token Header
+    需要提供 Bearer Token
     """
     query = db.query(SystemFunction)
 

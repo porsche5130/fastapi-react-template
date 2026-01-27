@@ -24,23 +24,13 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# 優先使用 Redis 版本,如果 Redis 不可用則使用記憶體版本
-try:
-    from app.core.transaction_token_redis import (
-        generate_txn_token,
-        verify_txn_token,
-        revoke_txn_token,
-        get_token_info
-    )
-    logger.info("✅ 使用 Redis 儲存交易令牌")
-except Exception:
-    from app.core.transaction_token import (
-        generate_txn_token,
-        verify_txn_token,
-        revoke_txn_token,
-        get_token_info
-    )
-    logger.warning("⚠️  使用記憶體儲存交易令牌")
+# v3.0: 使用 Redis 版本的交易令牌 (一個 session 一個 token 包含所有權限)
+from app.core.transaction_token_redis import (
+    verify_txn_token,
+    revoke_txn_token,
+    get_token_info
+)
+logger.info("✅ 使用 Redis v3.0 交易令牌 (一個 session 一個 token)")
 
 
 class TokenRequest(BaseModel):
@@ -151,6 +141,8 @@ async def request_transaction_token(
     txn_token = get_or_create_function_token(
         session_id=session_id,
         system_functions_id=system_function.id,
+        func_code=system_function.func_code,
+        module_code=system_function.module_code,
         permissions=permissions,  # 儲存權限資訊到 token
         valid_minutes=30  # 改為 30 分鐘
     )
@@ -209,6 +201,107 @@ async def get_transaction_token_info(
     }
 
 
+@router.post("/refresh", summary="刷新交易令牌 (v3.0)")
+async def refresh_transaction_token(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    刷新交易令牌 (v3.0 新架構)
+
+    當 Transaction Token 過期(30分鐘)但 Session 仍有效(60分鐘)時,
+    自動重新查詢資料庫權限,建立新的 Token。
+
+    這個 API 會在前端攔截器中自動呼叫,使用者無感知。
+
+    需要提供 Bearer Token (session_id)
+
+    Returns:
+        {
+            "txn_token": "新的交易令牌",
+            "message": "Token 已刷新"
+        }
+    """
+    # 取得 session_id
+    session_id = getattr(current_user, 'current_session_id', None)
+    if not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="無法取得 Session ID,請重新登入"
+        )
+
+    # 重新查詢使用者的角色權限 (從資料庫)
+    from app.models.roleright import RoleRight
+    from app.models.systemfunction import SystemFunction
+    from app.core.transaction_token_redis import create_all_functions_token
+
+    role_ids = current_user.user_role if isinstance(current_user.user_role, list) else []
+
+    # 取得使用者所有有權限的功能 (包含權限詳情)
+    all_permissions = {}  # {system_function_id: {func_code, module_code, create, read, ...}}
+
+    if role_ids:
+        # 查詢所有角色權限
+        role_rights = db.query(RoleRight).filter(
+            RoleRight.user_role_id.in_(role_ids),
+            RoleRight.is_read == True  # 至少要有讀取權限
+        ).all()
+
+        # 查詢功能資訊
+        function_ids = list(set([rr.system_function_id for rr in role_rights if rr.system_function_id]))
+        functions = db.query(SystemFunction).filter(SystemFunction.id.in_(function_ids)).all()
+        function_map = {func.id: func for func in functions}
+
+        # 建立權限字典
+        for rr in role_rights:
+            func_id = rr.system_function_id
+            if func_id not in all_permissions:
+                func = function_map.get(func_id)
+                if func:
+                    all_permissions[str(func_id)] = {
+                        "func_code": func.func_code,
+                        "module_code": func.module_code,
+                        "create": False,
+                        "read": False,
+                        "update": False,
+                        "delete": False,
+                        "print": False,
+                        "file": False
+                    }
+
+            # 合併權限 (多個角色的權限取聯集)
+            if func_id in function_map:
+                perm = all_permissions[str(func_id)]
+                perm["create"] = perm["create"] or rr.is_create
+                perm["read"] = perm["read"] or rr.is_read
+                perm["update"] = perm["update"] or rr.is_update
+                perm["delete"] = perm["delete"] or rr.is_delete
+                perm["print"] = perm["print"] or rr.is_print
+                perm["file"] = perm["file"] or rr.is_file
+
+    # 建立新的 Transaction Token
+    txn_token = create_all_functions_token(
+        session_id=session_id,
+        all_permissions=all_permissions
+    )
+
+    if not txn_token:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="系統錯誤：無法建立 Transaction Token"
+        )
+
+    logger.info(
+        f"✅ Token 已刷新: User={current_user.id}, "
+        f"Session={session_id[:8]}..., Functions={len(all_permissions)}"
+    )
+
+    return {
+        "txn_token": txn_token,
+        "message": "Token 已刷新"
+    }
+
+
 @router.post("/revoke", summary="撤銷交易令牌")
 async def revoke_transaction_token(
     x_txn_token: str = Header(..., alias="X-Txn-Token"),
@@ -248,22 +341,27 @@ async def revoke_transaction_token(
 # ============ 用於其他 API 的依賴項 ============
 
 def require_txn_token(
-    func_code: str,
+    func_code: str | list[str],
     required_permission: str = None,
     one_time_use: bool = False
 ):
     """
-    交易令牌驗證依賴項
+    交易令牌驗證依賴項 (v3.0 新架構)
 
     用於需要 txn_token 驗證的 API 端點。
+    v3.0: 一個 token 包含所有功能權限，自動延長時效。
 
     Args:
-        func_code: 功能代碼
+        one_time_use: v3.0 中已廢棄，保留此參數僅用於向後相容
+
+    Args:
+        func_code: 功能代碼 (str) 或功能代碼列表 (list[str])
+                  支援多個 func_code 用於共用 API (如: ["organizations", "tenant_profile"])
         required_permission: 必要的權限類型 (create/read/update/delete/print/file)
                             如果為 None,只驗證 token 有效性
-        one_time_use: 是否為一次性使用 (預設 False,因為同一功能內可多次操作)
 
     Example:
+        # Single func_code
         @router.post("/role_rights/save")
         async def save_role_rights(
             data: DataModel,
@@ -271,6 +369,15 @@ def require_txn_token(
             _: None = Depends(require_txn_token("role_rights", "update"))
         ):
             # Token 已驗證,且使用者有 update 權限
+            ...
+
+        # Multiple func_codes (shared API)
+        @router.get("/organizations")
+        async def get_organizations(
+            current_user: User = Depends(get_current_user),
+            _: None = Depends(require_txn_token(["organizations", "tenant_profile"], "read"))
+        ):
+            # Token 包含所有權限，只要有其中一個功能的權限即可
             ...
     """
     async def dependency(
@@ -286,33 +393,67 @@ def require_txn_token(
                 detail="無法取得 Session ID,請重新登入"
             )
 
-        # 驗證 token (綁定 session_id) 並取得權限資訊
-        token_info = verify_txn_token(
-            txn_token=x_txn_token,
-            session_id=session_id,
-            func_code=func_code,
-            one_time_use=one_time_use
-        )
+        # 正規化 func_code 為列表
+        allowed_func_codes = [func_code] if isinstance(func_code, str) else func_code
 
-        # 從 token 中取得權限資訊（不需要再查資料庫）
-        permissions = token_info.get("permissions", {})
+        # 驗證 token (v3.0: 使用新的驗證邏輯)
+        # 這會自動檢查 session_id 匹配，並延長 token 時效
+        try:
+            token_info = verify_txn_token(
+                txn_token=x_txn_token,
+                session_id=session_id,
+                func_code=allowed_func_codes[0] if len(allowed_func_codes) == 1 else None,
+                module_item=required_permission
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"❌ Token 驗證失敗: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="系統錯誤：Token 驗證失敗"
+            )
 
-        # 如果指定了必要權限，檢查 token 中的權限
-        if required_permission:
-            has_permission = permissions.get(required_permission, False)
-            if not has_permission:
-                logger.warning(
-                    f"[Transaction Token] 使用者 {current_user.id} Token 有效但缺少權限: "
-                    f"{func_code}.{required_permission}"
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"無權限執行操作: {func_code}.{required_permission}"
-                )
+        # v3.0: 從 token 中取得所有權限資訊
+        all_permissions = token_info.get("permissions", {})
 
-        logger.info(
-            f"[Transaction Token] 使用者 {current_user.id} 使用令牌執行: "
-            f"{func_code}" + (f".{required_permission}" if required_permission else "")
+        # 檢查是否有任一功能的權限
+        has_func_permission = False
+        matched_func_code = None
+
+        for func_code_check in allowed_func_codes:
+            # 在所有權限中查找該 func_code
+            for func_id, perm in all_permissions.items():
+                if perm.get("func_code") == func_code_check:
+                    # 找到了這個功能的權限
+                    if required_permission:
+                        # 檢查是否有指定的權限
+                        if perm.get(required_permission, False):
+                            has_func_permission = True
+                            matched_func_code = func_code_check
+                            break
+                    else:
+                        # 不需要特定權限，只要有這個功能即可
+                        has_func_permission = True
+                        matched_func_code = func_code_check
+                        break
+
+            if has_func_permission:
+                break
+
+        if not has_func_permission:
+            logger.warning(
+                f"[Transaction Token v3.0] 使用者 {current_user.id} Token 有效但缺少權限: "
+                f"func_codes={allowed_func_codes}, required_permission={required_permission}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"無權限執行操作"
+            )
+
+        logger.debug(
+            f"[Transaction Token v3.0] 使用者 {current_user.id} 驗證通過: "
+            f"{matched_func_code}" + (f".{required_permission}" if required_permission else "")
         )
         return None
 

@@ -28,6 +28,7 @@ export const authService = {
   logout: async (): Promise<void> => {
     await axios.post('/api/auth/logout');
     localStorage.removeItem('access_token');
+    localStorage.removeItem('txn_token');
   },
 
   /**
@@ -45,9 +46,24 @@ export const authService = {
   },
 
   /**
+   * 儲存 Transaction Token
+   */
+  saveTxnToken: (txnToken: string): void => {
+    localStorage.setItem('txn_token', txnToken);
+  },
+
+  /**
+   * 取得 Transaction Token
+   */
+  getTxnToken: (): string | null => {
+    return localStorage.getItem('txn_token');
+  },
+
+  /**
    * 清除 Token
    */
   clearToken: (): void => {
     localStorage.removeItem('access_token');
+    localStorage.removeItem('txn_token');
   },
 };

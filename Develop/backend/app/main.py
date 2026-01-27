@@ -14,11 +14,11 @@ from pydantic import ValidationError
 from app.core.config import settings
 from app.core.redis_client import init_redis, close_redis, redis_health_check
 from app.routes import (
-    auth, system, organization, sys_profile,
-    users, permissions,
-    systemcode, system_functions, system_notifications,
-    user_roles, role_rights, user_logs, home, transaction,
-    numbering_rules, file_attachments
+    auth, system, organization, sysprofile,
+    user, permissions,
+    systemcode, systemfunction, systemnotification,
+    userrole, roleright, userlog, home, transaction,
+    numberingrule, fileattachment
 )
 
 # 配置日誌

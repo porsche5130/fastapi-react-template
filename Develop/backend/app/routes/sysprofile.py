@@ -11,9 +11,10 @@ from sqlalchemy.sql import func
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.permissions import check_permission
-from app.models.sys_profile import SysProfile
+from app.routes.transaction import require_txn_token
+from app.models.sysprofile import SysProfile
 from app.models.user import User
-from app.schemas.sys_profile import SysProfileResponse, SysProfileUpdate
+from app.schemas.sysprofile import SysProfileResponse, SysProfileUpdate
 from app.services.userlog_service import UserLogService
 
 logger = logging.getLogger(__name__)
@@ -66,19 +67,17 @@ async def get_sys_profile(
 async def update_sys_profile(
     profile_data: SysProfileUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("sys_profile", "update"))
 ):
     """
     更新系統設定（id=1）
 
-    需要提供 Bearer Token 及 sys_profile 修改權限
+    需要 sys_profile 功能的 update 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "sys_profile", "update"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限修改系統設定"
-        )
+    # Token 已驗證 update 權限
 
     # 查詢系統設定
     profile = db.query(SysProfile).filter(SysProfile.id == 1).first()

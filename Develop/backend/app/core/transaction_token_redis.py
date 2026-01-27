@@ -1,12 +1,13 @@
 """
-Transaction Token Management with Redis
+Transaction Token Management with Redis (v3.0)
 使用 Redis 的交易令牌管理
 
-設計理念:
-- Token 綁定 session_id + system_functions_id
-- 每個 session 在每個功能只有一個有效 token
-- 有效期 30 分鐘，每次使用自動延長
-- Session 過期或登出，可撤銷所有相關 token
+新架構設計 (v3.0):
+- 一個 session 只有一個 transaction token
+- Token 包含所有功能的權限資訊
+- 登入時同時建立 Session 和 Token
+- Token 有效期 30 分鐘，每次使用自動延長 30 分鐘
+- Session 有效期 60 分鐘，每次使用自動延長 30 分鐘
 """
 
 import secrets
@@ -23,8 +24,9 @@ logger = logging.getLogger(__name__)
 
 # Token 前綴
 TOKEN_PREFIX = "txn_token:"
-SESSION_FUNCTION_TOKEN_PREFIX = "session_func_token:"  # session + function 對應的 token
-TOKEN_EXPIRE_SECONDS = 30 * 60  # 30 分鐘
+SESSION_TOKEN_PREFIX = "session_token_mapping:"  # session → token 映射
+TOKEN_EXPIRE_SECONDS = 30 * 60  # 30 分鐘（初始時效）
+TOKEN_EXTEND_SECONDS = 30 * 60  # 30 分鐘（每次延長）
 
 # 台北時區 (UTC+8)
 TAIPEI_TZ = timezone(timedelta(hours=8))
@@ -35,26 +37,29 @@ def get_taipei_now():
     return datetime.now(timezone.utc).astimezone(TAIPEI_TZ)
 
 
-def get_or_create_function_token(
+def create_all_functions_token(
     session_id: str,
-    system_functions_id: int,
-    permissions: dict = None,
-    valid_minutes: int = 30
+    all_permissions: Dict[int, dict]
 ) -> str:
     """
-    取得或建立功能令牌（自動延長機制）
-
-    如果該 session + function 已有有效 token，則延長其有效期
-    如果沒有或已過期，則建立新的 token
+    建立包含所有功能權限的 Transaction Token
 
     Args:
         session_id: Session ID
-        system_functions_id: 系統功能 ID
-        permissions: 使用者權限 dict (create, read, update, delete, print, file)
-        valid_minutes: 有效期限(分鐘)，預設 30 分鐘
+        all_permissions: 所有功能權限字典
+            格式: {
+                1: {  # system_function_id
+                    "func_code": "organizations",
+                    "module_code": "organizations",
+                    "create": true,
+                    "read": true,
+                    ...
+                },
+                5: {...}
+            }
 
     Returns:
-        交易令牌
+        交易令牌字串
     """
     redis_client = get_redis()
     if not redis_client:
@@ -62,313 +67,334 @@ def get_or_create_function_token(
         return None
 
     try:
-        # 1. 檢查是否已有該 session + function 的 token
-        mapping_key = f"{SESSION_FUNCTION_TOKEN_PREFIX}{session_id}:{system_functions_id}"
-        existing_token = redis_client.get(mapping_key)
-
-        if existing_token:
-            # 檢查 token 是否仍然有效
-            token_key = f"{TOKEN_PREFIX}{existing_token}"
-            token_data = redis_client.get(token_key)
-
-            if token_data:
-                # Token 仍然有效，延長有效期
-                redis_client.expire(token_key, valid_minutes * 60)
-                redis_client.expire(mapping_key, valid_minutes * 60)
-
-                logger.info(
-                    f"延長交易令牌有效期: session={session_id[:8]}..., "
-                    f"function_id={system_functions_id}, 延長至 {valid_minutes} 分鐘"
-                )
-                return existing_token
-
-        # 2. 建立新的 token
+        # 生成隨機令牌
         random_str = secrets.token_urlsafe(32)
-        token_data_str = f"{session_id}:{system_functions_id}:{random_str}:{get_taipei_now().isoformat()}"
+        token_data_str = f"{session_id}:{random_str}:{get_taipei_now().isoformat()}"
         txn_token = hashlib.sha256(token_data_str.encode()).hexdigest()
 
-        # Token 資訊（包含權限）
+        # Token 資訊（包含所有功能權限）
         token_info = {
             "session_id": session_id,
-            "system_functions_id": system_functions_id,
-            "permissions": permissions or {},
+            "permissions": all_permissions,
             "created_at": get_taipei_now().isoformat(),
             "last_access": get_taipei_now().isoformat()
         }
 
-        # 3. 儲存 token 資訊
+        # 儲存 token 資訊
         token_key = f"{TOKEN_PREFIX}{txn_token}"
         redis_client.setex(
             name=token_key,
-            time=valid_minutes * 60,
-            value=json.dumps(token_info)
+            time=TOKEN_EXPIRE_SECONDS,
+            value=json.dumps(token_info, ensure_ascii=False)
         )
 
-        # 4. 儲存 session + function → token 的映射
+        # 儲存 session → token 的映射
+        mapping_key = f"{SESSION_TOKEN_PREFIX}{session_id}"
         redis_client.setex(
             name=mapping_key,
-            time=valid_minutes * 60,
+            time=TOKEN_EXPIRE_SECONDS,
             value=txn_token
         )
 
         logger.info(
-            f"建立新交易令牌: session={session_id[:8]}..., "
-            f"function_id={system_functions_id}, 有效期 {valid_minutes} 分鐘"
+            f"✅ 建立交易令牌: session={session_id[:8]}..., "
+            f"包含 {len(all_permissions)} 個功能權限, 有效期 30 分鐘"
         )
 
         return txn_token
 
     except Exception as e:
-        logger.error(f"建立或延長交易令牌失敗: {e}")
+        logger.error(f"❌ 建立交易令牌失敗: {e}")
         return None
-
-
-def generate_txn_token(
-    session_id: str,
-    func_code: str,
-    valid_minutes: int = 30
-) -> str:
-    """
-    生成交易令牌 (舊版相容，建議使用 get_or_create_function_token)
-
-    Args:
-        session_id: Session ID (JWT Token)
-        func_code: 功能代碼
-        valid_minutes: 有效期限(分鐘)
-
-    Returns:
-        交易令牌
-    """
-    redis_client = get_redis()
-
-    # 生成隨機令牌
-    random_str = secrets.token_urlsafe(32)
-    token_data = f"{session_id}:{func_code}:{random_str}:{get_taipei_now().isoformat()}"
-
-    # 使用 SHA256 產生最終 token
-    txn_token = hashlib.sha256(token_data.encode()).hexdigest()
-
-    # Token 資訊
-    token_info = {
-        "session_id": session_id,
-        "func_code": func_code,
-        "created_at": get_taipei_now().isoformat(),
-        "used": False
-    }
-
-    # 儲存到 Redis
-    if redis_client:
-        try:
-            # 1. 儲存 token 資訊
-            redis_key = f"{TOKEN_PREFIX}{txn_token}"
-            redis_client.setex(
-                name=redis_key,
-                time=valid_minutes * 60,
-                value=json.dumps(token_info)
-            )
-
-        except Exception:
-            # Redis 失敗時回退到記憶體儲存
-            _fallback_generate(session_id, func_code, valid_minutes, txn_token, token_info)
-    else:
-        _fallback_generate(session_id, func_code, valid_minutes, txn_token, token_info)
-
-    return txn_token
 
 
 def verify_txn_token(
     txn_token: str,
     session_id: str,
-    func_code: str,
-    one_time_use: bool = False
+    func_code: str = None,
+    module_item: str = None
 ) -> dict:
     """
-    驗證交易令牌 (檢查 session_id 綁定)
+    驗證交易令牌並自動延長有效期
+
+    Args:
+        txn_token: 交易令牌
+        session_id: Session ID
+        func_code: 功能代碼（可選，用於檢查是否有此功能權限）
+        module_item: 權限項目（可選，如 "create", "read", "update", "delete"）
 
     Returns:
         dict: Token 資訊，包含 permissions
+
+    Raises:
+        HTTPException: Token 無效、過期、或權限不足
     """
     redis_client = get_redis()
-    redis_key = f"{TOKEN_PREFIX}{txn_token}"
-
-    if redis_client:
-        try:
-            token_data = redis_client.get(redis_key)
-            if not token_data:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="交易令牌無效或已過期,請重新申請"
-                )
-            token_info = json.loads(token_data)
-        except (json.JSONDecodeError, HTTPException) as e:
-            if isinstance(e, HTTPException):
-                raise
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="交易令牌格式錯誤"
-            )
-        except Exception:
-            return _fallback_verify(txn_token, session_id, func_code, one_time_use)
-    else:
-        return _fallback_verify(txn_token, session_id, func_code, one_time_use)
-
-    # ★ 核心檢查: Token 的 session_id 是否匹配
-    if token_info["session_id"] != session_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="交易令牌與 Session 不符,請重新登入"
-        )
-
-    if one_time_use and token_info.get("used"):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="交易令牌已使用,請重新申請"
-        )
-
-    # 新版 Token 使用 system_functions_id,舊版使用 func_code
-    # 如果提供了 func_code 參數且 Token 有 func_code 欄位,則驗證
-    if func_code and "func_code" in token_info:
-        if token_info["func_code"] != func_code:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"交易令牌與功能代碼不符"
-            )
-
-    if one_time_use and redis_client:
-        try:
-            redis_client.delete(redis_key)
-            session_tokens_key = f"{SESSION_TOKENS_PREFIX}{session_id}"
-            redis_client.srem(session_tokens_key, txn_token)
-        except Exception:
-            pass
-
-    # 回傳 token 資訊（包含權限）
-    return token_info
-
-
-def revoke_txn_token(txn_token: str) -> bool:
-    """撤銷交易令牌"""
-    redis_client = get_redis()
-    redis_key = f"{TOKEN_PREFIX}{txn_token}"
-
-    if redis_client:
-        try:
-            token_data = redis_client.get(redis_key)
-            if token_data:
-                token_info = json.loads(token_data)
-                session_id = token_info.get("session_id")
-                if session_id:
-                    session_tokens_key = f"{SESSION_TOKENS_PREFIX}{session_id}"
-                    redis_client.srem(session_tokens_key, txn_token)
-            result = redis_client.delete(redis_key)
-            return result > 0
-        except Exception:
-            return _fallback_revoke(txn_token)
-    else:
-        return _fallback_revoke(txn_token)
-
-
-def revoke_session_tokens(session_id: str) -> int:
-    """撤銷某個 session 的所有 token"""
-    redis_client = get_redis()
     if not redis_client:
-        return 0
+        logger.error("Redis 未連線，無法驗證交易令牌")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="系統錯誤：無法連接 Redis"
+        )
+
+    token_key = f"{TOKEN_PREFIX}{txn_token}"
 
     try:
-        count = 0
-        session_tokens_key = f"{SESSION_TOKENS_PREFIX}{session_id}"
-        tokens = redis_client.smembers(session_tokens_key)
+        # 1. 讀取 token 資訊
+        token_data = redis_client.get(token_key)
+        if not token_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="交易令牌無效或已過期，請重新登入"
+            )
 
-        for token in tokens:
-            redis_key = f"{TOKEN_PREFIX}{token}"
-            redis_client.delete(redis_key)
-            count += 1
+        token_info = json.loads(token_data)
 
-        redis_client.delete(session_tokens_key)
-        return count
-    except Exception:
-        return 0
+        # 2. 檢查 session_id 是否匹配
+        if token_info["session_id"] != session_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="交易令牌與 Session 不符，請重新登入"
+            )
+
+        # 3. 如果指定了 func_code，檢查是否有該功能的權限
+        if func_code:
+            permissions = token_info.get("permissions", {})
+
+            # 查找該 func_code 對應的功能權限
+            func_permission = None
+            for func_id, perm in permissions.items():
+                if perm.get("func_code") == func_code:
+                    func_permission = perm
+                    break
+
+            if not func_permission:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"沒有功能 {func_code} 的使用權限"
+                )
+
+            # 4. 如果指定了 module_item，檢查是否有該操作權限
+            if module_item:
+                # 權限名稱映射 (前端使用 create/read/update/delete，後端存儲使用 is_create/is_read...)
+                perm_key_map = {
+                    "create": "create",
+                    "read": "read",
+                    "update": "update",
+                    "delete": "delete",
+                    "print": "print",
+                    "file": "file"
+                }
+
+                perm_key = perm_key_map.get(module_item.lower())
+                if not perm_key:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"無效的權限項目: {module_item}"
+                    )
+
+                has_permission = func_permission.get(perm_key, False)
+                if not has_permission:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"沒有 {func_code} 的 {module_item} 權限"
+                    )
+
+        # 5. 更新最後存取時間並延長有效期（延長 30 分鐘）
+        token_info["last_access"] = get_taipei_now().isoformat()
+        redis_client.setex(
+            name=token_key,
+            time=TOKEN_EXTEND_SECONDS,
+            value=json.dumps(token_info, ensure_ascii=False)
+        )
+
+        # 6. 同時延長 session → token 映射的有效期
+        mapping_key = f"{SESSION_TOKEN_PREFIX}{session_id}"
+        redis_client.expire(mapping_key, TOKEN_EXTEND_SECONDS)
+
+        logger.debug(
+            f"✅ 交易令牌驗證通過並已延長: session={session_id[:8]}..., "
+            f"func_code={func_code}, module_item={module_item}"
+        )
+
+        return token_info
+
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="交易令牌格式錯誤"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ 驗證交易令牌失敗: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="系統錯誤：無法驗證交易令牌"
+        )
+
+
+def get_session_token(session_id: str) -> Optional[str]:
+    """
+    取得 session 對應的 transaction token
+
+    Args:
+        session_id: Session ID
+
+    Returns:
+        Transaction token 或 None
+    """
+    redis_client = get_redis()
+    if not redis_client:
+        return None
+
+    try:
+        mapping_key = f"{SESSION_TOKEN_PREFIX}{session_id}"
+        txn_token = redis_client.get(mapping_key)
+        return txn_token if txn_token else None
+    except Exception as e:
+        logger.error(f"❌ 取得 session token 失敗: {e}")
+        return None
+
+
+def revoke_txn_token(txn_token: str, session_id: str = None) -> bool:
+    """
+    撤銷交易令牌
+
+    Args:
+        txn_token: 交易令牌
+        session_id: Session ID（可選，用於同時刪除映射）
+
+    Returns:
+        是否撤銷成功
+    """
+    redis_client = get_redis()
+    if not redis_client:
+        return False
+
+    try:
+        token_key = f"{TOKEN_PREFIX}{txn_token}"
+        result = redis_client.delete(token_key)
+
+        # 如果提供了 session_id，也刪除映射
+        if session_id:
+            mapping_key = f"{SESSION_TOKEN_PREFIX}{session_id}"
+            redis_client.delete(mapping_key)
+
+        if result > 0:
+            logger.info(f"✅ 交易令牌已撤銷: {txn_token[:16]}...")
+            return True
+        else:
+            logger.warning(f"⚠️  交易令牌不存在: {txn_token[:16]}...")
+            return False
+
+    except Exception as e:
+        logger.error(f"❌ 撤銷交易令牌失敗: {e}")
+        return False
+
+
+def revoke_session_token(session_id: str) -> bool:
+    """
+    撤銷某個 session 的 transaction token
+
+    Args:
+        session_id: Session ID
+
+    Returns:
+        是否撤銷成功
+    """
+    redis_client = get_redis()
+    if not redis_client:
+        return False
+
+    try:
+        # 1. 取得 session 對應的 token
+        mapping_key = f"{SESSION_TOKEN_PREFIX}{session_id}"
+        txn_token = redis_client.get(mapping_key)
+
+        if not txn_token:
+            logger.warning(f"⚠️  Session 沒有對應的 token: {session_id[:8]}...")
+            return False
+
+        # 2. 刪除 token
+        token_key = f"{TOKEN_PREFIX}{txn_token}"
+        redis_client.delete(token_key)
+
+        # 3. 刪除映射
+        redis_client.delete(mapping_key)
+
+        logger.info(f"✅ Session 的交易令牌已撤銷: session={session_id[:8]}...")
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ 撤銷 session token 失敗: {e}")
+        return False
 
 
 def get_token_info(txn_token: str) -> Optional[dict]:
-    """取得 token 資訊"""
+    """
+    取得 token 資訊
+
+    Args:
+        txn_token: 交易令牌
+
+    Returns:
+        Token 資訊字典，包含 remaining_seconds
+    """
     redis_client = get_redis()
-    redis_key = f"{TOKEN_PREFIX}{txn_token}"
-
-    if redis_client:
-        try:
-            token_data = redis_client.get(redis_key)
-            if not token_data:
-                return None
-            token_info = json.loads(token_data)
-            ttl = redis_client.ttl(redis_key)
-            token_info["remaining_seconds"] = max(0, ttl)
-            return token_info
-        except Exception:
-            return _fallback_get_info(txn_token)
-    else:
-        return _fallback_get_info(txn_token)
-
-
-# ========== Fallback 記憶體儲存函數 ==========
-
-def _fallback_generate(session_id, func_code, valid_minutes, txn_token, token_info):
-    from app.core.transaction_token import _token_store
-    expires_at = get_taipei_now() + timedelta(minutes=valid_minutes)
-    _token_store[txn_token] = {
-        **token_info,
-        "expires_at": expires_at
-    }
-
-
-def _fallback_verify(txn_token, session_id, func_code, one_time_use):
-    from app.core.transaction_token import _token_store
-    if txn_token not in _token_store:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="交易令牌無效或已過期"
-        )
-
-    token_info = _token_store[txn_token]
-    if get_taipei_now() > token_info["expires_at"]:
-        del _token_store[txn_token]
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="交易令牌已過期"
-        )
-
-    if token_info["session_id"] != session_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="交易令牌與 Session 不符"
-        )
-
-    if token_info["func_code"] != func_code:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="交易令牌與功能代碼不符"
-        )
-
-    if one_time_use:
-        del _token_store[txn_token]
-
-    return True
-
-
-def _fallback_revoke(txn_token):
-    from app.core.transaction_token import _token_store
-    if txn_token in _token_store:
-        del _token_store[txn_token]
-        return True
-    return False
-
-
-def _fallback_get_info(txn_token):
-    from app.core.transaction_token import _token_store
-    if txn_token not in _token_store:
+    if not redis_client:
         return None
-    info = _token_store[txn_token].copy()
-    info["remaining_seconds"] = int(
-        (info["expires_at"] - get_taipei_now()).total_seconds()
-    )
-    return info
+
+    try:
+        token_key = f"{TOKEN_PREFIX}{txn_token}"
+        token_data = redis_client.get(token_key)
+
+        if not token_data:
+            return None
+
+        token_info = json.loads(token_data)
+        ttl = redis_client.ttl(token_key)
+        token_info["remaining_seconds"] = max(0, ttl)
+
+        return token_info
+
+    except Exception as e:
+        logger.error(f"❌ 取得 token 資訊失敗: {e}")
+        return None
+
+
+def extend_token(txn_token: str, extend_seconds: int = TOKEN_EXTEND_SECONDS) -> bool:
+    """
+    延長 token 有效期
+
+    Args:
+        txn_token: 交易令牌
+        extend_seconds: 延長秒數（預設 30 分鐘）
+
+    Returns:
+        是否延長成功
+    """
+    redis_client = get_redis()
+    if not redis_client:
+        return False
+
+    try:
+        token_key = f"{TOKEN_PREFIX}{txn_token}"
+
+        # 檢查 token 是否存在
+        if not redis_client.exists(token_key):
+            logger.warning(f"⚠️  Token 不存在，無法延長: {txn_token[:16]}...")
+            return False
+
+        # 延長有效期
+        result = redis_client.expire(token_key, extend_seconds)
+
+        if result:
+            logger.debug(f"✅ Token 已延長: {txn_token[:16]}... → {extend_seconds}秒")
+            return True
+        else:
+            return False
+
+    except Exception as e:
+        logger.error(f"❌ 延長 token 失敗: {e}")
+        return False

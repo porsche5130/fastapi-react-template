@@ -57,7 +57,7 @@ export const useTransactionToken = (
   const extendPromptShown = useRef(false);
   const extendTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 申請令牌
+  // 申請令牌 (v3.0: 直接使用登入時的 token)
   const requestToken = useCallback(async () => {
     if (!funcCode) {
       setError('功能代碼不能為空');
@@ -68,20 +68,38 @@ export const useTransactionToken = (
     setError(null);
 
     try {
-      const response = await requestTransactionToken(funcCode);
+      // v3.0: 直接從 localStorage 讀取登入時儲存的 token
+      const storedToken = localStorage.getItem('txn_token');
 
-      setTxnToken(response.txn_token);
-      setPermissions(response.permissions);
-      setRemainingSeconds(response.expires_in);
+      if (!storedToken) {
+        throw new Error('未找到交易令牌,請重新登入');
+      }
 
-      console.log(`[useTransactionToken] 申請令牌成功: ${funcCode}`, response.permissions);
+      // 設定 token (v3.0 token 包含所有功能權限)
+      setTxnToken(storedToken);
+
+      // v3.0: token 包含所有權限,這裡設定為全部允許
+      // 實際權限由後端驗證
+      setPermissions({
+        create: true,
+        read: true,
+        update: true,
+        delete: true,
+        print: true,
+        file: true
+      });
+
+      // 設定 30 分鐘有效期 (1800 秒)
+      setRemainingSeconds(1800);
+
+      console.log(`[useTransactionToken] 使用登入 token: ${funcCode}`);
 
       // 開始定期檢查令牌狀態
-      startTokenCheck(response.txn_token);
+      startTokenCheck(storedToken);
     } catch (err: any) {
-      const errorMsg = err.response?.data?.detail || err.message || '申請令牌失敗';
+      const errorMsg = err.message || '讀取令牌失敗';
       setError(errorMsg);
-      console.error('[useTransactionToken] 申請令牌失敗:', err);
+      console.error('[useTransactionToken] 讀取令牌失敗:', err);
     } finally {
       setLoading(false);
     }

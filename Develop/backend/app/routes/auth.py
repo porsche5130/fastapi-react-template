@@ -70,24 +70,73 @@ async def login(
     # 設定 session_id 到 context (用於記錄日誌)
     session_id_ctx.set(session_id)
 
-    # 查詢使用者有權限的功能 IDs (is_read = true)
+    # 查詢使用者的角色權限 (從資料庫)
     from app.models.roleright import RoleRight
+    from app.models.systemfunction import SystemFunction
+    from app.models.userrole import UserRole
+    from app.core.transaction_token_redis import create_all_functions_token
+
     role_ids = user.user_role if isinstance(user.user_role, list) else []
 
-    # 取得使用者所有有讀取權限的功能 IDs
-    authorized_function_ids = []
+    # 查詢角色詳細資訊
+    roles = []
     if role_ids:
+        user_roles = db.query(UserRole).filter(UserRole.id.in_(role_ids)).all()
+        roles = [
+            {
+                "id": role.id,
+                "role_cname": role.role_cname,
+                "role_ename": role.role_ename
+            }
+            for role in user_roles
+        ]
+
+    # 取得使用者所有有權限的功能 (包含權限詳情)
+    authorized_function_ids = []
+    all_permissions = {}  # {system_function_id: {func_code, module_code, create, read, ...}}
+
+    if role_ids:
+        # 查詢所有角色權限
         role_rights = db.query(RoleRight).filter(
             RoleRight.user_role_id.in_(role_ids),
-            RoleRight.is_read == True
+            RoleRight.is_read == True  # 至少要有讀取權限
         ).all()
 
-        # 收集所有有權限的 system_function_id (去重)
-        authorized_function_ids = list(set([
-            rr.system_function_id for rr in role_rights if rr.system_function_id
-        ]))
+        # 查詢功能資訊
+        function_ids = list(set([rr.system_function_id for rr in role_rights if rr.system_function_id]))
+        functions = db.query(SystemFunction).filter(SystemFunction.id.in_(function_ids)).all()
+        function_map = {func.id: func for func in functions}
 
-    # 建立 Redis Session（儲存 user_id, role_ids, organization_id, authorized_function_ids 等資料）
+        # 建立權限字典
+        for rr in role_rights:
+            func_id = rr.system_function_id
+            if func_id not in all_permissions:
+                func = function_map.get(func_id)
+                if func:
+                    all_permissions[str(func_id)] = {
+                        "func_code": func.func_code,
+                        "module_code": func.module_code,
+                        "create": False,
+                        "read": False,
+                        "update": False,
+                        "delete": False,
+                        "print": False,
+                        "file": False
+                    }
+
+            # 合併權限 (多個角色的權限取聯集)
+            if func_id in function_map:
+                perm = all_permissions[str(func_id)]
+                perm["create"] = perm["create"] or rr.is_create
+                perm["read"] = perm["read"] or rr.is_read
+                perm["update"] = perm["update"] or rr.is_update
+                perm["delete"] = perm["delete"] or rr.is_delete
+                perm["print"] = perm["print"] or rr.is_print
+                perm["file"] = perm["file"] or rr.is_file
+
+        authorized_function_ids = function_ids
+
+    # 建立 Redis Session（儲存使用者基本資訊）
     session_created = SessionService.create_session(
         session_id=session_id,
         user_id=user.id,
@@ -95,13 +144,31 @@ async def login(
         organization_id=user.organization_id,
         username=user.username,
         account=user.account,
-        authorized_function_ids=authorized_function_ids
+        authorized_function_ids=authorized_function_ids,
+        roles=roles
     )
 
     if not session_created:
         logger.error(f"Redis Session 建立失敗: {session_id}")
-        # Redis 失敗不影響登入，但記錄警告
-        logger.warning("⚠️  Redis 無法使用，Session 將僅依賴 JWT Token")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="系統錯誤：無法建立 Session"
+        )
+
+    # 建立 Transaction Token（包含所有功能權限）
+    txn_token = create_all_functions_token(
+        session_id=session_id,
+        all_permissions=all_permissions
+    )
+
+    if not txn_token:
+        logger.error(f"Transaction Token 建立失敗: {session_id}")
+        # 清理已建立的 Session
+        SessionService.delete_session(session_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="系統錯誤：無法建立 Transaction Token"
+        )
 
     # 建立 JWT Token（只放 session_id，不放 user_id）
     access_token = create_access_token(data={
@@ -132,7 +199,16 @@ async def login(
         import traceback
         traceback.print_exc()
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    logger.info(
+        f"✅ 登入成功: {user.username} (User: {user.id}, "
+        f"Session: {session_id[:8]}..., Functions: {len(all_permissions)})"
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "txn_token": txn_token
+    }
 
 
 @router.get("/me", response_model=UserProfile, summary="取得當前使用者資訊")

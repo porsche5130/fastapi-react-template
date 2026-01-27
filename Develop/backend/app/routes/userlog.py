@@ -11,10 +11,11 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.user_logs import UserLog
+from app.routes.transaction import require_txn_token
+from app.models.userlog import UserLog
 from app.models.user import User
-from app.models.system_functions import SystemFunction
-from app.schemas.user_logs import UserLogResponse, UserLogCreate, UserLogCreateByFrontend
+from app.models.systemfunction import SystemFunction
+from app.schemas.userlog import UserLogResponse, UserLogCreate, UserLogCreateByFrontend
 from app.services.userlog_service import UserLogService
 import logging
 
@@ -34,11 +35,17 @@ async def get_user_logs(
     skip: int = Query(0, ge=0, description="略過筆數"),
     limit: int = Query(100, ge=1, le=1000, description="取得筆數"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("user_logs", "read"))
 ):
     """
     取得使用者日誌列表（支援多條件查詢）
+
+    需要 user_logs 功能的 read 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 read 權限
 
     # 建立查詢條件
     conditions = []
@@ -104,11 +111,17 @@ async def get_user_logs(
 async def get_user_log(
     log_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("user_logs", "read"))
 ):
     """
     根據 ID 取得單筆日誌
+
+    需要 user_logs 功能的 read 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 read 權限
     log = db.query(UserLog).options(joinedload(UserLog.user)).filter(UserLog.id == log_id).first()
 
     if not log:
@@ -141,11 +154,17 @@ async def get_user_logs_by_user(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("user_logs", "read"))
 ):
     """
     取得特定使用者的所有日誌
+
+    需要 user_logs 功能的 read 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 read 權限
     logs = db.query(UserLog).options(joinedload(UserLog.user)).filter(
         UserLog.user_id == user_id
     ).order_by(desc(UserLog.action_at)).offset(skip).limit(limit).all()
@@ -187,11 +206,17 @@ async def get_user_logs_by_function(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("user_logs", "read"))
 ):
     """
     取得特定功能的所有日誌
+
+    需要 user_logs 功能的 read 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 read 權限
     logs = db.query(UserLog).options(joinedload(UserLog.user)).filter(
         UserLog.system_function_id == function_id
     ).order_by(desc(UserLog.action_at)).offset(skip).limit(limit).all()
@@ -232,9 +257,17 @@ async def create_user_log_from_frontend(
     由前端主動呼叫建立日誌記錄
     用於記錄使用者的各種操作行為（View, Read, Create, Update, Delete 等）
 
+    只需要 Bearer Token（登入認證）
+
+    此 API 是系統自動呼叫的日誌記錄功能，不需要 transaction token
+    因為日誌記錄是在各種操作過程中自動產生的，而非使用者主動的資料操作
+
     前端不需要提供 user_id 和 session_id，由後端自動填入
     data_id 優先使用前端提供的值，若無則自動從 change_data 或 look_data 中提取
+
+    需要提供 Bearer Token
     """
+    # Token 已驗證 create 權限
     # 自動提取 data_id（優先前端提供，其次從 change_data，最後從 look_data）
     data_id = log.data_id
     if data_id is None and log.change_data and 'id' in log.change_data:

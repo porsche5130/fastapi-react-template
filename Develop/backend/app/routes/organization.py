@@ -95,19 +95,21 @@ async def get_organizations(
 async def get_organization(
     organization_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-    _token: None = Depends(require_txn_token("organizations", "read"))
+    current_user: User = Depends(get_current_user)
 ):
     """
     取得組織單位資訊
 
-    需要 organizations 功能的 read 權限
+    只需要 Bearer Token（登入認證）
+
+    此 API 用於首頁顯示使用者所屬組織資訊，不需要 transaction token
+    因為這是登入後自動載入的基本資訊
 
     資料層級安全控制:一般使用者只能查看自己的組織
 
     - **organization_id**: 組織單位 ID
 
-    需要提供 Bearer Token 及 X-Txn-Token Header
+    需要提供 Bearer Token
     """
     # Token 已驗證 read 權限
     organization = db.query(Organization).filter(Organization.id == organization_id).first()

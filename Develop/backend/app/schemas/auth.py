@@ -26,6 +26,7 @@ class Token(BaseModel):
 
     access_token: str = Field(..., description="存取 Token")
     token_type: str = Field(default="bearer", description="Token 類型")
+    txn_token: str = Field(..., description="交易令牌")
 
 
 class TokenData(BaseModel):

@@ -61,8 +61,15 @@ export interface GetUsersParams {
 /**
  * 取得使用者列表
  */
-export const getUsers = async (params?: GetUsersParams): Promise<UserDetail[]> => {
-  const response = await axios.get('/api/users/', { params });
+export const getUsers = async (
+  params?: GetUsersParams,
+  txnToken?: string
+): Promise<UserDetail[]> => {
+  const config: any = { params };
+  if (txnToken) {
+    config.headers = { 'X-Txn-Token': txnToken };
+  }
+  const response = await axios.get('/api/users/', config);
   return response.data;
 };
 

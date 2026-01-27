@@ -32,6 +32,7 @@ export interface LoginRequest {
 export interface TokenResponse {
   access_token: string;
   token_type: string;
+  txn_token: string;
 }
 
 // 使用者資料

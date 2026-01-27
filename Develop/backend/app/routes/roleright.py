@@ -10,11 +10,12 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
-from app.models.role_rights import RoleRight
-from app.models.user_roles import UserRole
-from app.models.system_functions import SystemFunction
+from app.routes.transaction import require_txn_token
+from app.models.roleright import RoleRight
+from app.models.userrole import UserRole
+from app.models.systemfunction import SystemFunction
 from app.models.user import User
-from app.schemas.role_rights import (
+from app.schemas.roleright import (
     RoleRightResponse,
     RoleRightBatchCreate,
     FunctionWithPermissions,
@@ -30,16 +31,22 @@ router = APIRouter()
 async def get_functions_with_permissions(
     role_id: int = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("role_rights", "read"))
 ):
     """
     取得所有已啟用功能及其支援的權限項目
+
+    需要 role_rights 功能的 read 權限
 
     - 回傳所有 is_active=true 的功能
     - 依 func_order 排序
     - 包含每個功能的 available_permissions
     - 若提供 role_id 且該角色為非系統管理角色(is_mana=false),則過濾掉系統管理功能(is_mana=true)
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 read 權限
 
     # 查詢功能清單
     query = db.query(SystemFunction).filter(SystemFunction.is_active == True)
@@ -84,17 +91,23 @@ async def get_functions_with_permissions(
 async def get_role_rights(
     role_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("role_rights", "read"))
 ):
     """
     取得指定角色的權限設定
+
+    需要 role_rights 功能的 read 權限
 
     Args:
         role_id: 角色ID
 
     Returns:
         角色權限詳情，包含角色資訊與權限列表
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 read 權限
     # 檢查角色是否存在
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
     if not role:
@@ -139,10 +152,13 @@ async def save_role_rights(
     role_id: int,
     batch_data: RoleRightBatchCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("role_rights", "update"))
 ):
     """
     批次儲存角色權限設定
+
+    需要 role_rights 功能的 update 權限
 
     - 先刪除該角色的所有現有權限
     - 再批次新增傳入的權限設定
@@ -153,7 +169,10 @@ async def save_role_rights(
 
     Returns:
         儲存結果訊息
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 update 權限
     # 檢查角色是否存在
     role = db.query(UserRole).filter(UserRole.id == role_id).first()
     if not role:
@@ -255,17 +274,24 @@ async def save_role_rights(
 async def delete_role_rights(
     role_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("role_rights", "delete", one_time_use=True))
 ):
     """
     刪除指定角色的所有權限設定
+
+    需要 role_rights 功能的 delete 權限
+    此操作為一次性使用，Token 使用後立即失效
 
     Args:
         role_id: 角色ID
 
     Returns:
         刪除結果訊息
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
+    # Token 已驗證 delete 權限，且使用後立即失效
     # 保存刪除前資料用於日誌
     rights = db.query(RoleRight).filter(
         RoleRight.user_role_id == role_id

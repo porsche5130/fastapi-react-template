@@ -5,7 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import transactionService from '../services/transactionService';
 import numberingRulesService, {
   SequenceRule,
   SequenceRuleCreate,
@@ -59,32 +58,43 @@ const NumberingRulesPage: React.FC = () => {
   useEffect(() => {
     const initPage = async () => {
       try {
-        const response = await transactionService.requestTransactionToken('numbering_rules');
-        setTxnToken(response.txn_token);
-        setPermissions(response.permissions);
+        // 從 localStorage 讀取登入時的全域 txn_token
+        const storedToken = localStorage.getItem('txn_token');
 
-        // 取得 token 後立即載入資料
-        if (response.permissions.read) {
-          const rulesResponse = await numberingRulesService.getAll(
-            0,
-            100,
-            showActiveOnly ? true : undefined,
-            searchTerm || undefined,
-            response.txn_token
-          );
-          setRules(rulesResponse.items);
-          setTotal(rulesResponse.total);
-
-          // 記錄瀏覽日誌
-          await logView('numbering_rules', {
-            filters: {
-              skip: 0,
-              limit: 100,
-              is_active: showActiveOnly ? true : undefined,
-              search: searchTerm || undefined
-            }
-          });
+        if (!storedToken) {
+          throw new Error('未找到交易令牌，請重新登入');
         }
+
+        setTxnToken(storedToken);
+        // 假設有完整權限 (實際權限由後端 token 內容決定)
+        setPermissions({
+          create: true,
+          read: true,
+          update: true,
+          delete: true,
+          print: true,
+          file: true
+        });
+
+        // 載入資料 (axios 攔截器會自動添加 txn_token)
+        const rulesResponse = await numberingRulesService.getAll(
+          0,
+          100,
+          showActiveOnly ? true : undefined,
+          searchTerm || undefined
+        );
+        setRules(rulesResponse.items);
+        setTotal(rulesResponse.total);
+
+        // 記錄瀏覽日誌
+        await logView('numbering_rules', {
+          filters: {
+            skip: 0,
+            limit: 100,
+            is_active: showActiveOnly ? true : undefined,
+            search: searchTerm || undefined
+          }
+        });
       } catch (error: any) {
         console.error('Init page failed:', error);
         alert(t('common.error'));

@@ -13,7 +13,8 @@ from app.core.redis_client import get_redis
 logger = logging.getLogger(__name__)
 
 # Session 有效期限（秒）
-SESSION_EXPIRE_SECONDS = 3600  # 1 小時
+SESSION_EXPIRE_SECONDS = 3600  # 60 分鐘（初始時效）
+SESSION_EXTEND_SECONDS = 1800  # 30 分鐘（每次延長）
 
 # 台北時區 (UTC+8)
 TAIPEI_TZ = timezone(timedelta(hours=8))
@@ -35,7 +36,8 @@ class SessionService:
         organization_id: int,
         username: str,
         account: str,
-        authorized_function_ids: List[int] = None
+        authorized_function_ids: List[int] = None,
+        roles: List[Dict[str, Any]] = None
     ) -> bool:
         """
         建立 Session
@@ -48,6 +50,7 @@ class SessionService:
             username: 使用者名稱
             account: 帳號
             authorized_function_ids: 使用者有權限的功能 IDs
+            roles: 角色詳細資訊 [{"id": 1, "role_cname": "系統管理員", "role_ename": "Admin"}]
 
         Returns:
             是否建立成功
@@ -61,6 +64,7 @@ class SessionService:
             session_data = {
                 "user_id": user_id,
                 "role_ids": role_ids,
+                "roles": roles or [],
                 "organization_id": organization_id,
                 "username": username,
                 "account": account,
@@ -113,11 +117,11 @@ class SessionService:
 
             session_data = json.loads(session_json)
 
-            # 更新最後存取時間並延長過期時間
+            # 更新最後存取時間並延長過期時間（延長 30 分鐘）
             session_data["last_access"] = get_taipei_now().isoformat()
             redis_client.setex(
                 key,
-                SESSION_EXPIRE_SECONDS,
+                SESSION_EXTEND_SECONDS,
                 json.dumps(session_data)
             )
 
@@ -129,13 +133,18 @@ class SessionService:
             return None
 
     @staticmethod
-    def update_session_roles(session_id: str, role_ids: List[int]) -> bool:
+    def update_session_roles(
+        session_id: str,
+        role_ids: List[int],
+        roles: List[Dict[str, Any]] = None
+    ) -> bool:
         """
         更新 Session 中的角色資料（用於權限變更時即時更新）
 
         Args:
             session_id: Session ID
             role_ids: 新的角色 ID 陣列
+            roles: 角色詳細資訊 [{"id": 1, "role_cname": "系統管理員", "role_ename": "Admin"}]
 
         Returns:
             是否更新成功
@@ -155,6 +164,8 @@ class SessionService:
 
             session_data = json.loads(session_json)
             session_data["role_ids"] = role_ids
+            if roles is not None:
+                session_data["roles"] = roles
             session_data["last_access"] = get_taipei_now().isoformat()
 
             # 保持原有的 TTL

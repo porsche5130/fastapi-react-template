@@ -405,7 +405,9 @@ const SystemCodesPage: React.FC = () => {
   if (error) {
     return (
       <div className="page-container">
-        <div className="error-message">{error}</div>
+        <div className="error-message">
+          {typeof error === 'string' ? error : JSON.stringify(error)}
+        </div>
       </div>
     );
   }

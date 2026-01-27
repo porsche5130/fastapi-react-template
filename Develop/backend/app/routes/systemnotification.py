@@ -13,9 +13,10 @@ from sqlalchemy import and_, or_, func, desc
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.core.permissions import check_permission
+from app.routes.transaction import require_txn_token
 from app.models.user import User
-from app.models.system_notification import SystemNotification, NotificationCloseDate
-from app.schemas.system_notification import (
+from app.models.systemnotification import SystemNotification, NotificationCloseDate
+from app.schemas.systemnotification import (
     SystemNotificationCreate,
     SystemNotificationUpdate,
     SystemNotificationResponse,
@@ -102,10 +103,13 @@ async def get_notifications(
     notice_order: Optional[int] = Query(None, description="篩選：訊息次序"),
     search: Optional[str] = Query(None, description="全文檢索：主旨"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_notifications", "read"))
 ):
     """
     取得系統通知列表
+
+    需要 system_notifications 功能的 read 權限
 
     - **skip**: 略過筆數
     - **limit**: 限制筆數
@@ -113,14 +117,9 @@ async def get_notifications(
     - **notice_order**: 篩選訊息次序
     - **search**: 全文檢索（中英文主旨）
 
-    需要提供 Bearer Token 及 system_notifications 讀取權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_notifications", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取系統通知"
-        )
+    # Token 已驗證 read 權限
 
     # 記錄 View 日誌（功能瀏覽記錄）
     try:
@@ -174,21 +173,19 @@ async def get_notifications(
 async def get_notification(
     notification_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_notifications", "read"))
 ):
     """
     取得單一系統通知資訊
 
+    需要 system_notifications 功能的 read 權限
+
     - **notification_id**: 通知 ID
 
-    需要提供 Bearer Token 及 system_notifications 讀取權限
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_notifications", "read"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限讀取系統通知"
-        )
+    # Token 已驗證 read 權限
 
     notification = db.query(SystemNotification).filter(
         SystemNotification.id == notification_id
@@ -221,19 +218,17 @@ async def get_notification(
 async def create_notification(
     notification_data: SystemNotificationCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_notifications", "create"))
 ):
     """
     建立系統通知
 
-    需要提供 Bearer Token 及 system_notifications 新增權限
+    需要 system_notifications 功能的 create 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_notifications", "create"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限新增系統通知"
-        )
+    # Token 已驗證 create 權限
 
     # 驗證時間範圍
     if notification_data.notice_end_at <= notification_data.notice_start_at:
@@ -301,19 +296,17 @@ async def update_notification(
     notification_id: int,
     notification_data: SystemNotificationUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_notifications", "update"))
 ):
     """
     更新系統通知
 
-    需要提供 Bearer Token 及 system_notifications 更新權限
+    需要 system_notifications 功能的 update 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_notifications", "update"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限更新系統通知"
-        )
+    # Token 已驗證 update 權限
 
     notification = db.query(SystemNotification).filter(
         SystemNotification.id == notification_id
@@ -401,19 +394,18 @@ async def update_notification(
 async def delete_notification(
     notification_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_notifications", "delete", one_time_use=True))
 ):
     """
     刪除系統通知
 
-    需要提供 Bearer Token 及 system_notifications 刪除權限
+    需要 system_notifications 功能的 delete 權限
+    此操作為一次性使用，Token 使用後立即失效
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_notifications", "delete"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限刪除系統通知"
-        )
+    # Token 已驗證 delete 權限，且使用後立即失效
 
     notification = db.query(SystemNotification).filter(
         SystemNotification.id == notification_id
@@ -478,19 +470,17 @@ async def delete_notification(
 async def toggle_notification_active(
     notification_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    _token: None = Depends(require_txn_token("system_notifications", "update"))
 ):
     """
     切換通知的啟用狀態（用於 DataTables 點選切換）
 
-    需要提供 Bearer Token 及 system_notifications 更新權限
+    需要 system_notifications 功能的 update 權限
+
+    需要提供 Bearer Token 及 X-Txn-Token Header
     """
-    # 檢查權限
-    if not check_permission(db, current_user, "system_notifications", "update"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="無權限更新系統通知"
-        )
+    # Token 已驗證 update 權限
 
     notification = db.query(SystemNotification).filter(
         SystemNotification.id == notification_id

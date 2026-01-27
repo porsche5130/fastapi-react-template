@@ -63,29 +63,40 @@ const FileAttachmentsPage: React.FC = () => {
     is_public: false,
   });
 
-  // 初始化:取得交易令牌和權限
+  // 初始化:從 localStorage 讀取交易令牌
   useEffect(() => {
     const initPage = async () => {
       try {
-        const response = await transactionService.requestTransactionToken('file_attachments');
-        setTxnToken(response.txn_token);
-        setPermissions(response.permissions);
+        // 從 localStorage 讀取登入時的全域 txn_token
+        const storedToken = localStorage.getItem('txn_token');
 
-        // 取得資料
-        if (response.permissions.read) {
-          await loadFiles(response.txn_token);
-
-          // 記錄瀏覽日誌
-          await logView('file_attachments', {
-            filters: {
-              skip: 0,
-              limit: 100,
-              category: filterCategory || undefined,
-              is_temp: filterIsTemp,
-              search: searchTerm || undefined
-            }
-          });
+        if (!storedToken) {
+          throw new Error('未找到交易令牌，請重新登入');
         }
+
+        setTxnToken(storedToken);
+        // 假設有完整權限 (實際權限由後端 token 內容決定)
+        setPermissions({
+          create: true,
+          read: true,
+          update: true,
+          delete: true,
+          file: true
+        });
+
+        // 取得資料 (axios 攔截器會自動添加 txn_token)
+        await loadFiles();
+
+        // 記錄瀏覽日誌
+        await logView('file_attachments', {
+          filters: {
+            skip: 0,
+            limit: 100,
+            category: filterCategory || undefined,
+            is_temp: filterIsTemp,
+            search: searchTerm || undefined
+          }
+        });
       } catch (error: any) {
         console.error('Init page failed:', error);
         alert(t('common.error'));
@@ -96,12 +107,10 @@ const FileAttachmentsPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadFiles = async (token?: string) => {
-    const currentToken = token || txnToken;
-    if (!currentToken) return;
-
+  const loadFiles = async () => {
     setLoading(true);
     try {
+      // axios 攔截器會自動從 localStorage 讀取 txn_token 並添加到 header
       const response = await fileAttachmentsService.getAll(
         0,
         100,
@@ -110,8 +119,7 @@ const FileAttachmentsPage: React.FC = () => {
         undefined,
         undefined,
         filterIsTemp,
-        searchTerm || undefined,
-        currentToken
+        searchTerm || undefined
       );
       setFiles(response.items || []);
       setTotal(response.total || 0);

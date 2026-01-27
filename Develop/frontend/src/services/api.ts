@@ -15,10 +15,18 @@ const api = axios.create({
 // 請求攔截器 - 自動加入 Token
 api.interceptors.request.use(
   (config) => {
+    // 添加 Bearer Token (JWT)
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // 添加 Transaction Token (v3.0)
+    const txnToken = localStorage.getItem('txn_token');
+    if (txnToken) {
+      config.headers['X-Txn-Token'] = txnToken;
+    }
+
     return config;
   },
   (error) => {
@@ -35,6 +43,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Token 失效，清除並導向登入頁
       localStorage.removeItem('access_token');
+      localStorage.removeItem('txn_token');
       window.location.href = '/login';
     }
     return Promise.reject(error);

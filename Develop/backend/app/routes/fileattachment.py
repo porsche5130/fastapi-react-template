@@ -14,8 +14,8 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.routes.transaction import require_txn_token
 from app.models.user import User
-from app.models.file_attachments import FileAttachment
-from app.schemas.file_attachments import (
+from app.models.fileattachment import FileAttachment
+from app.schemas.fileattachment import (
     FileAttachmentResponse,
     FileAttachmentListResponse,
     FileAttachmentUpdate,

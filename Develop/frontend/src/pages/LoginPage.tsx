@@ -41,9 +41,32 @@ const LoginPage: React.FC = () => {
     try {
       // 呼叫登入 API
       const response = await authService.login(formData);
+      console.log('🔍 Login API Response:', response);
+      console.log('🔍 txn_token in response:', response.txn_token);
 
-      // 儲存 Token 並載入使用者資料
+      // 儲存 Access Token
+      authService.saveToken(response.access_token);
+      console.log('✅ Saved access_token');
+
+      // 儲存 Transaction Token
+      if (response.txn_token) {
+        authService.saveTxnToken(response.txn_token);
+        console.log('✅ Saved txn_token:', response.txn_token);
+      } else {
+        console.warn('⚠️ No txn_token in response!');
+      }
+
+      // 檢查 localStorage
+      console.log('🔍 localStorage access_token:', localStorage.getItem('access_token'));
+      console.log('🔍 localStorage txn_token:', localStorage.getItem('txn_token'));
+
+      // 載入使用者資料
+      console.log('🔄 Calling AuthContext.login()...');
       await login(response.access_token);
+      console.log('✅ AuthContext.login() completed');
+
+      // 再次檢查 localStorage
+      console.log('🔍 After login - localStorage txn_token:', localStorage.getItem('txn_token'));
 
       // 導向主頁面
       navigate('/dashboard');

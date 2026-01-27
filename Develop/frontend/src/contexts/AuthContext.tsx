@@ -34,7 +34,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('載入使用者資料失敗:', error);
-      authService.clearToken();
+      // 只清除 access_token,保留 txn_token
+      localStorage.removeItem('access_token');
       setUser(null);
       setIsAuthenticated(false);
     }

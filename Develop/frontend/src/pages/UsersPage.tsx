@@ -18,6 +18,7 @@ import { getUserRoles, UserRole } from '../services/userRoleService';
 import { getSysProfile } from '../services/sysProfileService';
 import { usePermission } from '../hooks/usePermission';
 import { useFunctionName } from '../hooks/useFunctionName';
+import { useTransactionToken } from '../hooks/useTransactionToken';
 import { logView, logCreate, logUpdate, logDelete } from '../utils/userLogHelper';
 import '../styles/DataTable.css';
 
@@ -25,6 +26,7 @@ const UsersPage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { hasPermission, loading: permissionLoading } = usePermission();
   const pageTitle = useFunctionName('users');
+  const { txnToken } = useTransactionToken('users', true, true);
   const [users, setUsers] = useState<UserDetail[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [roles, setRoles] = useState<UserRole[]>([]);
@@ -51,10 +53,14 @@ const UsersPage: React.FC = () => {
   });
 
   const loadUsers = async () => {
+    if (!txnToken) {
+      console.log('等待交易令牌...');
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
-      const data = await getUsers({ search: search || undefined });
+      const data = await getUsers({ search: search || undefined }, txnToken);
       setUsers(data);
     } catch (err: any) {
       setError(err.response?.data?.detail || t('common.error'));
@@ -91,8 +97,8 @@ const UsersPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // 等待權限載入完成後再檢查權限並載入資料
-    if (!permissionLoading && hasPermission('users', 'read') && !hasInitialized.current) {
+    // 等待權限載入完成、取得交易令牌後再載入資料
+    if (!permissionLoading && hasPermission('users', 'read') && txnToken && !hasInitialized.current) {
       hasInitialized.current = true;
 
       const initPage = async () => {
@@ -112,7 +118,7 @@ const UsersPage: React.FC = () => {
       initPage();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [permissionLoading]);
+  }, [permissionLoading, txnToken]);
 
   // 當組織變更時，如果不是系統管理公司，則移除已選擇的 is_mana 角色
   useEffect(() => {
