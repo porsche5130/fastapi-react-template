@@ -101,7 +101,7 @@ npm run dev
 ```
 
 6. **訪問系統**
-- Frontend: http://localhost:5173
+- Frontend: http://localhost:3000
 - Backend API: http://localhost:10181
 - API 文件: http://localhost:10181/docs
 
