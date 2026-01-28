@@ -19,15 +19,15 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = Field(default="DEBUG")
     PORT: int = Field(default=10181)
 
-    # Database
+    # Database (遠端 PostgreSQL on 10.1.0.20:5433)
     DATABASE_URL: str = Field(
-        default="postgresql://dev:dev123@localhost:5432/pa64_dev"
+        default="postgresql://admin:!DC1qaz2wsx@10.1.0.20:5433/pa64_dev"
     )
 
     # Redis
-    REDIS_HOST: str = Field(default="localhost")
+    REDIS_HOST: str = Field(default="10.1.0.20")
     REDIS_PORT: int = Field(default=6379)
-    REDIS_DB: int = Field(default=0)
+    REDIS_DB: int = Field(default=1)
     REDIS_PASSWORD: str = Field(default="!DC1qaz2wsx")
 
     # Security

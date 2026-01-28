@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import sys; print('\n'.join([line for line in open('nohup.out', 'r', encoding='utf-8').readlines()[-100:]]))
+                                                  ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'nohup.out'

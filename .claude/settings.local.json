@@ -100,7 +100,21 @@
       "Bash(cmd.exe /c \"FOR /F \"\"tokens=5\"\" %P IN \\(''netstat -ano ^| findstr \"\":10181\"\"''\\) DO taskkill /F /PID %P\")",
       "Bash(./kill_backend.bat)",
       "Bash(chmod:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash($env:PYTHONIOENCODING=\"utf-8\")",
+      "Bash(redis-server:*)",
+      "Bash(git checkout:*)",
+      "Bash(Select-String -Pattern \"error|warning\" -Context 2)",
+      "Bash(Get-Content \"C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\w--P-PA6-4\\\\tasks\\\\bd402ff.output\")",
+      "Bash(Select-String -Pattern \"error|Error|ERROR|Exception|Traceback\" -Context 2)",
+      "Bash(telnet:*)",
+      "Bash(pg_dump:*)",
+      "Bash(Get-Content \"C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\w--P-PA6-4\\\\tasks\\\\bfcd7a5.output\" -Tail 50)",
+      "Bash(Select-String -Pattern \"Redis|redis\" -Context 2)",
+      "Bash(cmd //c \"taskkill /PID 34272 /F & taskkill /PID 41320 /F\")",
+      "Bash(cmd //c \"taskkill /PID 41320 /F & taskkill /PID 34272 /F\")",
+      "Bash(PGPASSWORD='!DC1qaz2wsx' psql:*)",
+      "Bash(cat:*)"
     ]
   }
 }

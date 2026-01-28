@@ -597,6 +597,7 @@
     "jobTitle": "職稱",
     "phone": "電話",
     "userRole": "使用者角色",
+    "roles": "角色",
     "lastLoginAt": "最後登入時間",
     "lastLoginIp": "最後登入 IP",
     "isActive": "啟用狀態",

@@ -33,6 +33,7 @@ const MyProfilePage: React.FC = () => {
   const [profile, setProfile] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isRequestingToken, setIsRequestingToken] = useState(false);
   const [formData, setFormData] = useState({
     account: '',
     username: '',
@@ -73,9 +74,22 @@ const MyProfilePage: React.FC = () => {
   };
 
   const handleEdit = async () => {
-    setIsEditMode(true);
-    // Request transaction token when entering edit mode
-    await requestToken();
+    try {
+      setIsRequestingToken(true);
+      // Request transaction token first before entering edit mode
+      await requestToken();
+
+      // Wait a bit to ensure token is set
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Only enter edit mode after token is ready
+      setIsEditMode(true);
+    } catch (error) {
+      console.error('取得交易令牌失敗:', error);
+      alert(t('myProfile.tokenError', '無法取得交易令牌,請重新登入'));
+    } finally {
+      setIsRequestingToken(false);
+    }
   };
 
   const handleCancel = () => {
@@ -242,8 +256,9 @@ const MyProfilePage: React.FC = () => {
                     type="button"
                     onClick={handleEdit}
                     className="btn-primary"
+                    disabled={isRequestingToken}
                   >
-                    {t('common.edit', '編輯')}
+                    {isRequestingToken ? t('common.loading', '處理中...') : t('common.edit', '編輯')}
                   </button>
                 )}
               </>

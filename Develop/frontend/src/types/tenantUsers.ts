@@ -20,6 +20,7 @@ export interface TenantUser {
 }
 
 export interface TenantUserCreate {
+  organization_id: number;
   account: string;
   username: string;
   password: string;

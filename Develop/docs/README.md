@@ -68,6 +68,12 @@
   - 程式碼範本
   - 檢查清單
 
+### 新專案啟動
+- **[guides/NEW_PROJECT_SETUP.md](guides/NEW_PROJECT_SETUP.md)** - 使用範本建立新專案指南
+  - 複製專案步驟
+  - 必須修改的配置
+  - 同時運行多個專案
+
 ## 完成報告
 
 ### Token 機制
@@ -110,6 +116,9 @@
 
 **使用交易令牌**
 → [guides/TRANSACTION_TOKEN_GUIDE.md](guides/TRANSACTION_TOKEN_GUIDE.md)
+
+**使用範本建立新專案**
+→ [guides/NEW_PROJECT_SETUP.md](guides/NEW_PROJECT_SETUP.md)
 
 **設計資料表 Schema**
 → [SCHEMA_DESIGN_GUIDELINES.md](SCHEMA_DESIGN_GUIDELINES.md)

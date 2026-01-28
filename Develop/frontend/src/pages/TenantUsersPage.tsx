@@ -22,6 +22,8 @@ import {
   toggleUserStatus,
   checkAccountUniqueness
 } from '../services/tenantUsersService';
+import { getUserRoles, UserRole } from '../services/userRoleService';
+import { getOrganizations, Organization } from '../services/organizationService';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermission } from '../hooks/usePermission';
 import { useFunctionName } from '../hooks/useFunctionName';
@@ -29,13 +31,15 @@ import { logView, logCreate, logUpdate, logDelete } from '../utils/userLogHelper
 import '../styles/DataTable.css';
 
 const TenantUsersPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { hasPermission, loading: permissionLoading } = usePermission();
   const pageTitle = useFunctionName('tenant_users');
   const hasInitialized = useRef(false);
 
   const [users, setUsers] = useState<TenantUser[]>([]);
+  const [roles, setRoles] = useState<UserRole[]>([]);
+  const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +54,7 @@ const TenantUsersPage: React.FC = () => {
 
   // Form states
   const [createForm, setCreateForm] = useState<TenantUserCreate & { confirmPassword: string }>({
+    organization_id: user?.organization_id || 0,
     account: '',
     username: '',
     password: '',
@@ -77,6 +82,28 @@ const TenantUsersPage: React.FC = () => {
   const canUpdate = hasPermission('tenant_users', 'update');
   const canDelete = hasPermission('tenant_users', 'delete');
 
+  // 載入角色列表
+  const loadRoles = async () => {
+    try {
+      const data = await getUserRoles({ is_active: true });
+      setRoles(data);
+    } catch (err: any) {
+      console.error('Failed to load roles:', err);
+    }
+  };
+
+  // 載入組織資料
+  const loadOrganization = async () => {
+    if (!user?.organization_id) return;
+    try {
+      const orgs = await getOrganizations({});
+      const org = orgs.find(o => o.id === user.organization_id);
+      if (org) setOrganization(org);
+    } catch (err: any) {
+      console.error('Failed to load organization:', err);
+    }
+  };
+
   // 載入組織成員列表
   const loadUsers = async () => {
     if (!user?.organization_id) {
@@ -101,7 +128,7 @@ const TenantUsersPage: React.FC = () => {
       hasInitialized.current = true;
       const initPage = async () => {
         try {
-          await loadUsers();
+          await Promise.all([loadRoles(), loadOrganization(), loadUsers()]);
           await logView('tenant_users', {}, null);
         } catch (err: any) {
           const errorMsg = err.response?.data?.detail || err.message || t('message.loadFailed');
@@ -113,13 +140,46 @@ const TenantUsersPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permissionLoading, canRead]);
 
+  // 取得可用的角色列表（過濾系統管理員角色）
+  const getAvailableRoles = () => {
+    if (!organization) return roles;
+    // 只有管理組織（is_mana = true）才能分配系統管理員角色
+    if (organization.is_mana) {
+      return roles;
+    } else {
+      return roles.filter(role => !role.is_mana);
+    }
+  };
+
+  // 處理角色選擇變更
+  const handleRoleChange = (roleId: number, checked: boolean, formType: 'create' | 'edit') => {
+    if (formType === 'create') {
+      if (checked) {
+        setCreateForm({ ...createForm, user_role: [...createForm.user_role, roleId] });
+      } else {
+        setCreateForm({ ...createForm, user_role: createForm.user_role.filter(id => id !== roleId) });
+      }
+    } else {
+      if (checked) {
+        setEditForm({ ...editForm, user_role: [...(editForm.user_role || []), roleId] });
+      } else {
+        setEditForm({ ...editForm, user_role: (editForm.user_role || []).filter(id => id !== roleId) });
+      }
+    }
+  };
+
   // 開啟新增視窗
   const handleOpenCreate = () => {
     if (!canCreate) {
       alert(t('message.noPermission'));
       return;
     }
+    if (!user?.organization_id) {
+      alert(t('common.error'));
+      return;
+    }
     setCreateForm({
+      organization_id: user.organization_id,
       account: '',
       username: '',
       password: '',
@@ -180,7 +240,19 @@ const TenantUsersPage: React.FC = () => {
         console.error('[TenantUsersPage] Failed to log create:', logErr);
       }
     } catch (err: any) {
-      const errorMsg = err.response?.data?.detail || t('message.createFailed');
+      console.error('[TenantUsersPage] Create error:', err);
+      let errorMsg = t('message.createFailed');
+
+      // 處理錯誤訊息
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMsg = detail;
+        } else if (typeof detail === 'object') {
+          errorMsg = JSON.stringify(detail);
+        }
+      }
+
       alert(errorMsg);
 
       // 記錄錯誤日誌
@@ -258,7 +330,19 @@ const TenantUsersPage: React.FC = () => {
         console.error('[TenantUsersPage] Failed to log update:', logErr);
       }
     } catch (err: any) {
-      const errorMsg = err.response?.data?.detail || t('message.updateFailed');
+      console.error('[TenantUsersPage] Update error:', err);
+      let errorMsg = t('message.updateFailed');
+
+      // 處理錯誤訊息
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMsg = detail;
+        } else if (typeof detail === 'object') {
+          errorMsg = JSON.stringify(detail);
+        }
+      }
+
       alert(errorMsg);
 
       // 記錄錯誤日誌
@@ -526,10 +610,17 @@ const TenantUsersPage: React.FC = () => {
 
       {/* 新增成員 Modal */}
       {showCreateModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2>{t('tenantUsers.createUser')}</h2>
-            <div className="form-grid">
+        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                👥 {pageTitle} - {t('common.createOperation')}
+              </h2>
+              <button className="modal-close" onClick={() => setShowCreateModal(false)}>✕</button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleCreate(); }}>
+              <div className="modal-body">
+                <div className="form-grid">
               <div className="form-group">
                 <label>{t('tenantUsers.account')} *</label>
                 <input
@@ -591,6 +682,22 @@ const TenantUsersPage: React.FC = () => {
                   onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
                 />
               </div>
+              <div className="form-group full-width">
+                <label>{t('tenantUsers.roles')}</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  {getAvailableRoles().map(role => (
+                    <label key={role.id} style={{ display: 'flex', alignItems: 'center', marginRight: '15px' }}>
+                      <input
+                        type="checkbox"
+                        checked={createForm.user_role.includes(role.id)}
+                        onChange={(e) => handleRoleChange(role.id, e.target.checked, 'create')}
+                        style={{ marginRight: '5px' }}
+                      />
+                      {i18n.language === 'zh-TW' ? role.role_cname : role.role_ename}
+                    </label>
+                  ))}
+                </div>
+              </div>
               <div className="form-group">
                 <label>
                   <input
@@ -601,25 +708,34 @@ const TenantUsersPage: React.FC = () => {
                   {t('tenantUsers.isActive')}
                 </label>
               </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn-primary" onClick={handleCreate} disabled={loading}>
-                {t('common.confirm')}
-              </button>
-              <button className="btn-secondary" onClick={() => setShowCreateModal(false)}>
-                {t('common.cancel')}
-              </button>
-            </div>
+                </div>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowCreateModal(false)}>
+                  {t('common.cancel')}
+                </button>
+                <button type="submit" className="btn-primary" disabled={loading}>
+                  {t('common.save')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
       {/* 編輯成員 Modal */}
       {showEditModal && currentUser && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h2>{t('tenantUsers.editUser')}</h2>
-            <div className="form-grid">
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                👥 {pageTitle} - {t('common.editOperation')}
+              </h2>
+              <button className="modal-close" onClick={() => setShowEditModal(false)}>✕</button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleUpdate(); }}>
+              <div className="modal-body">
+                <div className="form-grid">
               <div className="form-group">
                 <label>{t('tenantUsers.account')} *</label>
                 <input
@@ -679,6 +795,22 @@ const TenantUsersPage: React.FC = () => {
                   disabled
                 />
               </div>
+              <div className="form-group full-width">
+                <label>{t('tenantUsers.roles')}</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                  {getAvailableRoles().map(role => (
+                    <label key={role.id} style={{ display: 'flex', alignItems: 'center', marginRight: '15px' }}>
+                      <input
+                        type="checkbox"
+                        checked={(editForm.user_role || []).includes(role.id)}
+                        onChange={(e) => handleRoleChange(role.id, e.target.checked, 'edit')}
+                        style={{ marginRight: '5px' }}
+                      />
+                      {i18n.language === 'zh-TW' ? role.role_cname : role.role_ename}
+                    </label>
+                  ))}
+                </div>
+              </div>
               <div className="form-group">
                 <label>
                   <input
@@ -689,15 +821,17 @@ const TenantUsersPage: React.FC = () => {
                   {t('tenantUsers.isActive')}
                 </label>
               </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn-primary" onClick={handleUpdate} disabled={loading}>
-                {t('common.confirm')}
-              </button>
-              <button className="btn-secondary" onClick={() => setShowEditModal(false)}>
-                {t('common.cancel')}
-              </button>
-            </div>
+                </div>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowEditModal(false)}>
+                  {t('common.cancel')}
+                </button>
+                <button type="submit" className="btn-primary" disabled={loading}>
+                  {t('common.save')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

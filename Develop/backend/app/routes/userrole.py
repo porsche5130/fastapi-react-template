@@ -8,6 +8,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
+from sqlalchemy import cast
+from sqlalchemy.dialects.postgresql import JSONB
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
@@ -231,8 +233,9 @@ async def delete_user_roles(
     deleted_data = user_roles_to_dict(role)
 
     # 檢查是否有使用者使用此角色（包含已停用的）
+    # 使用 PostgreSQL JSONB 的 @> 操作符檢查是否包含該 role_id
     users_with_role = db.query(User).filter(
-        User.user_roles.contains([role_id])
+        User.user_role.op('@>')(cast([role_id], JSONB))
     ).count()
 
     if users_with_role > 0:

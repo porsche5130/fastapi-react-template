@@ -599,6 +599,7 @@
     "jobTitle": "Job Title",
     "phone": "Phone",
     "userRole": "User Role",
+    "roles": "Roles",
     "lastLoginAt": "Last Login",
     "lastLoginIp": "Last Login IP",
     "isActive": "Active Status",
