@@ -146,7 +146,7 @@ P-PA6.4/
 - PostgreSQL: 10.1.0.20:5433 (pa64_dev)
 - Redis: 10.1.0.20:6379 DB 1
 - Backend: http://localhost:10181
-- Frontend: http://localhost:3000
+- Frontend: http://localhost:10180
 
 ### 預設帳號
 ```
@@ -272,7 +272,7 @@ Changes: -1,581 lines / +140 lines
 ### Frontend
 - 狀態: ⏸️ 待啟動
 - Port: 3000
-- URL: http://localhost:3000
+- URL: http://localhost:10180
 
 ### 資料庫
 - PostgreSQL: ✅ 連線正常
