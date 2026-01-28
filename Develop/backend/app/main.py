@@ -18,7 +18,7 @@ from app.routes import (
     user, permissions,
     systemcode, systemfunction, systemnotification,
     userrole, roleright, userlog, home, transaction,
-    numberingrule, fileattachment
+    fileattachment
 )
 
 # 配置日誌
@@ -131,9 +131,6 @@ app.include_router(permissions.router, prefix="/api/permissions", tags=["權限�
 app.include_router(userlog.router, prefix="/api/user_logs", tags=["使用者日誌"])
 
 app.include_router(systemcode.router, prefix="/api/system_codes", tags=["系統代碼管理"])
-
-# 編號規則管理
-app.include_router(numberingrule.router, prefix="/api/numbering-rules", tags=["編號規則設定"])
 
 # 檔案附件管理
 app.include_router(fileattachment.router, prefix="/api/file-attachments", tags=["檔案附件管理"])
