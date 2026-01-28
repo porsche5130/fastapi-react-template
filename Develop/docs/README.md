@@ -38,6 +38,22 @@
   - 前端錯誤解析
   - 日誌記錄
 
+## 環境與部署
+
+### 開發環境
+- **[DEVELOPMENT_ENVIRONMENT.md](DEVELOPMENT_ENVIRONMENT.md)** - 開發測試環境配置
+  - PostgreSQL 和 Redis 設定 (10.1.0.20)
+  - Frontend Port 10180 / Backend Port 10181
+  - 快速啟動指令
+  - 環境變數設定
+
+### 部署策略
+- **[guides/DEPLOYMENT_STRATEGY.md](guides/DEPLOYMENT_STRATEGY.md)** - 環境區分與部署策略
+  - 三層環境架構 (開發/測試/營運)
+  - 原始碼保護策略 (Cython .so 編譯)
+  - Docker 部署設定
+  - 環境變數管理
+
 ## 開發指南
 
 ### 交易令牌
@@ -51,12 +67,6 @@
   - 開發流程
   - 程式碼範本
   - 檢查清單
-
-### 部署指南
-- **[guides/DEPLOYMENT_GUIDE.md](guides/DEPLOYMENT_GUIDE.md)** - 部署指南
-  - 環境準備
-  - 部署步驟
-  - 設定說明
 
 ## 完成報告
 
