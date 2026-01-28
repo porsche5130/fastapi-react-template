@@ -1,0 +1,172 @@
+# PA6.4 專案 .gitignore
+
+# ===================================
+# 環境變數與機密資訊
+# ===================================
+.env
+.env.local
+.env.*.local
+**/.env
+
+# ===================================
+# Python
+# ===================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ===================================
+# Node.js / React
+# ===================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Build output
+/Develop/frontend/build
+/Develop/frontend/dist
+
+# Testing
+coverage/
+
+# Production
+/Develop/frontend/.env.production.local
+
+# Logs
+logs
+*.log
+
+# ===================================
+# Database
+# ===================================
+*.sqlite
+*.sqlite3
+*.db
+
+# ===================================
+# Redis
+# ===================================
+dump.rdb
+
+# ===================================
+# 共用資料目錄 (使用者上傳的檔案)
+# ===================================
+/Develop/backend/sharedata/images/*
+/Develop/backend/sharedata/uploads/*
+/Develop/backend/sharedata/temp/*
+
+# 保留目錄結構
+!/Develop/backend/sharedata/images/.gitkeep
+!/Develop/backend/sharedata/uploads/.gitkeep
+!/Develop/backend/sharedata/temp/.gitkeep
+
+# 保留 locales (多語系資源)
+!/Develop/backend/sharedata/locales/
+
+# ===================================
+# OS 相關
+# ===================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===================================
+# IDE
+# ===================================
+*.swp
+*.swo
+*.swn
+.vim/
+
+# ===================================
+# 臨時檔案
+# ===================================
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# ===================================
+# Alembic (如果使用)
+# ===================================
+# 保留 migrations/ 目錄
+!/Develop/backend/migrations/
+# 但忽略自動生成的版本檔案 (可選)
+# /Develop/backend/migrations/versions/
+
+# ===================================
+# 測試與診斷腳本 (已移到 scripts/)
+# ===================================
+# 這些檔案已整理到 scripts/ 目錄,所以不需要忽略
+
+# ===================================
+# Claude Code
+# ===================================
+.claude/settings.local.json
+
+# ===================================
+# Git 相關
+# ===================================
+*.patch
+*.diff
