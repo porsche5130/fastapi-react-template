@@ -74,11 +74,30 @@ cp .env.example .env
 ```
 
 3. **初始化資料庫**
+
+**方法一: 使用自動化腳本 (推薦)**
 ```bash
-# 執行資料庫 migrations
+# 執行資料庫初始化腳本 (建立資料表)
+cd ../../scripts
+python init_database.py
+
+# 填入初始資料
+cd ../Develop/backend/migrations
+python run_migration_auto.py
+```
+
+**方法二: 使用 SQLAlchemy**
+```bash
+# 建立資料表
+cd Develop/backend
+python -c "from app.core.database import Base, engine; Base.metadata.create_all(bind=engine)"
+
+# 填入初始資料
 cd migrations
 python run_migration_auto.py
 ```
+
+詳細說明請參考: [資料庫初始化指南](Develop/docs/DATABASE_INITIALIZATION_GUIDE.md)
 
 4. **設定 Frontend**
 ```bash
