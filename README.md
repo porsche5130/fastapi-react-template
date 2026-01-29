@@ -75,18 +75,30 @@ cp .env.example .env
 
 3. **初始化資料庫**
 
-**方法一: 使用自動化腳本 (推薦)**
+**方法一: 使用 SQL 腳本 (推薦 - 最快速)**
 ```bash
-# 執行資料庫初始化腳本 (建立資料表)
-cd ../../scripts
+# 建立資料庫並執行 SQL 腳本
+psql -U postgres -c "CREATE DATABASE your_project_dev;"
+
+# 建立資料表
+psql -U your_user -d your_project_dev -f scripts/database_schema.sql
+
+# 填入初始資料 (包含範例組織、管理員帳號、權限設定等)
+psql -U your_user -d your_project_dev -f scripts/database_seed_data.sql
+```
+
+**方法二: 使用自動化 Python 腳本**
+```bash
+# 建立資料表
+cd scripts
 python init_database.py
 
 # 填入初始資料
-cd ../Develop/backend/migrations
-python run_migration_auto.py
+cd ..
+psql -U your_user -d your_database -f scripts/database_seed_data.sql
 ```
 
-**方法二: 使用 SQLAlchemy**
+**方法三: 使用 SQLAlchemy + Migration**
 ```bash
 # 建立資料表
 cd Develop/backend
