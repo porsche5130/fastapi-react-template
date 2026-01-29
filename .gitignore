@@ -74,15 +74,26 @@ show_*.py
 
 # Development tools (不部署到生產環境)
 /DevTools/
+/testarea/
+/系統分析/
+/系統規劃/
+/系統設計/
 
 # Database backups (不部署到生產環境)
 Develop/backend/backups/
 
-# Design documents (不部署到生產環境)
-/系統設計/
+# Utility scripts (本地開發用)
+kill_*.bat
+kill_*.ps1
+*.NDH6SA~M
+
+# Claude Code
+.claude/
 
 # Shared data (uploads, images)
 Develop/backend/sharedata/uploads/*
 Develop/backend/sharedata/images/*
+Develop/backend/sharedata/temp/*
 !Develop/backend/sharedata/uploads/.gitkeep
 !Develop/backend/sharedata/images/.gitkeep
+!Develop/backend/sharedata/temp/.gitkeep
